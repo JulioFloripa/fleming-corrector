@@ -14,7 +14,192 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      corrections: {
+        Row: {
+          created_at: string | null
+          id: string
+          max_score: number | null
+          percentage: number | null
+          status: string
+          student_id: string | null
+          student_name: string
+          template_id: string
+          total_score: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          max_score?: number | null
+          percentage?: number | null
+          status?: string
+          student_id?: string | null
+          student_name: string
+          template_id: string
+          total_score?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          max_score?: number | null
+          percentage?: number | null
+          status?: string
+          student_id?: string | null
+          student_name?: string
+          template_id?: string
+          total_score?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corrections_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      student_answers: {
+        Row: {
+          correct_answer: string
+          correction_id: string
+          created_at: string | null
+          id: string
+          is_correct: boolean | null
+          points_earned: number | null
+          question_number: number
+          student_answer: string | null
+        }
+        Insert: {
+          correct_answer: string
+          correction_id: string
+          created_at?: string | null
+          id?: string
+          is_correct?: boolean | null
+          points_earned?: number | null
+          question_number: number
+          student_answer?: string | null
+        }
+        Update: {
+          correct_answer?: string
+          correction_id?: string
+          created_at?: string | null
+          id?: string
+          is_correct?: boolean | null
+          points_earned?: number | null
+          question_number?: number
+          student_answer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_answers_correction_id_fkey"
+            columns: ["correction_id"]
+            isOneToOne: false
+            referencedRelation: "corrections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      template_questions: {
+        Row: {
+          correct_answer: string
+          created_at: string | null
+          id: string
+          points: number | null
+          question_number: number
+          template_id: string
+        }
+        Insert: {
+          correct_answer: string
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          question_number: number
+          template_id: string
+        }
+        Update: {
+          correct_answer?: string
+          created_at?: string | null
+          id?: string
+          points?: number | null
+          question_number?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_questions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      templates: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          exam_type: string
+          id: string
+          name: string
+          total_questions: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          exam_type: string
+          id?: string
+          name: string
+          total_questions: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          exam_type?: string
+          id?: string
+          name?: string
+          total_questions?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

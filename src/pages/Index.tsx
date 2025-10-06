@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 
 const Index = () => {
   const navigate = useNavigate();
+
   
   const actionCards = [
     {

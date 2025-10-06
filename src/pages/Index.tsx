@@ -1,8 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import { FileSpreadsheet, ClipboardEdit, History, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   const actionCards = [
     {
       title: "Corrigir Prova",
@@ -48,7 +51,7 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Sistema de Correção</p>
             </div>
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
             Login
           </Button>
         </div>

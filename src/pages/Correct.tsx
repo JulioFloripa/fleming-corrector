@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 const Correct = () => {
   const navigate = useNavigate();
@@ -51,10 +52,13 @@ const Correct = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (!selectedFile.name.endsWith('.csv')) {
+      const isCSV = selectedFile.name.endsWith('.csv');
+      const isXLSX = selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls');
+      
+      if (!isCSV && !isXLSX) {
         toast({
           title: "Formato inválido",
-          description: "Por favor, envie um arquivo CSV",
+          description: "Por favor, envie um arquivo CSV ou XLSX",
           variant: "destructive",
         });
         return;
@@ -85,79 +89,100 @@ const Correct = () => {
 
       if (questionsError) throw questionsError;
 
-      // Parse CSV
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          const { data: { user } } = await supabase.auth.getUser();
+      // Função para processar dados
+      const processData = async (data: any[]) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        for (const row of data) {
+          const studentName = row.nome || row.Nome || row.NOME;
+          const studentId = row.matricula || row.Matricula || row.MATRICULA;
           
-          for (const row of results.data as any[]) {
-            const studentName = row.nome || row.Nome || row.NOME;
-            const studentId = row.matricula || row.Matricula || row.MATRICULA;
-            
-            if (!studentName) continue;
+          if (!studentName) continue;
 
-            // Criar correção
-            const { data: correction, error: correctionError } = await supabase
-              .from("corrections")
-              .insert({
-                user_id: user?.id,
-                template_id: selectedTemplate,
-                student_name: studentName,
-                student_id: studentId,
-                status: "processing",
-              })
-              .select()
-              .single();
+          // Criar correção
+          const { data: correction, error: correctionError } = await supabase
+            .from("corrections")
+            .insert({
+              user_id: user?.id,
+              template_id: selectedTemplate,
+              student_name: studentName,
+              student_id: studentId,
+              status: "processing",
+            })
+            .select()
+            .single();
 
-            if (correctionError) continue;
+          if (correctionError) continue;
 
-            let totalScore = 0;
-            let maxScore = 0;
+          let totalScore = 0;
+          let maxScore = 0;
 
-            // Processar respostas
-            for (const question of questions || []) {
-              const studentAnswer = row[`q${question.question_number}`] || row[`Q${question.question_number}`];
-              const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
-              const pointsEarned = isCorrect ? Number(question.points) : 0;
+          // Processar respostas
+          for (const question of questions || []) {
+            const studentAnswer = row[`q${question.question_number}`] || row[`Q${question.question_number}`];
+            const isCorrect = studentAnswer?.toString().toUpperCase() === question.correct_answer.toUpperCase();
+            const pointsEarned = isCorrect ? Number(question.points) : 0;
 
-              totalScore += pointsEarned;
-              maxScore += Number(question.points);
+            totalScore += pointsEarned;
+            maxScore += Number(question.points);
 
-              await supabase.from("student_answers").insert({
-                correction_id: correction.id,
-                question_number: question.question_number,
-                student_answer: studentAnswer,
-                correct_answer: question.correct_answer,
-                is_correct: isCorrect,
-                points_earned: pointsEarned,
-              });
-            }
-
-            // Atualizar correção com pontuação
-            await supabase
-              .from("corrections")
-              .update({
-                total_score: totalScore,
-                max_score: maxScore,
-                percentage: (totalScore / maxScore) * 100,
-                status: "completed",
-              })
-              .eq("id", correction.id);
+            await supabase.from("student_answers").insert({
+              correction_id: correction.id,
+              question_number: question.question_number,
+              student_answer: studentAnswer?.toString(),
+              correct_answer: question.correct_answer,
+              is_correct: isCorrect,
+              points_earned: pointsEarned,
+            });
           }
 
-          toast({
-            title: "Correção concluída!",
-            description: `${results.data.length} provas corrigidas com sucesso`,
-          });
+          // Atualizar correção com pontuação
+          await supabase
+            .from("corrections")
+            .update({
+              total_score: totalScore,
+              max_score: maxScore,
+              percentage: (totalScore / maxScore) * 100,
+              status: "completed",
+            })
+            .eq("id", correction.id);
+        }
 
-          navigate("/history");
-        },
-        error: (error) => {
-          throw error;
-        },
-      });
+        toast({
+          title: "Correção concluída!",
+          description: `${data.length} provas corrigidas com sucesso`,
+        });
+
+        navigate("/history");
+      };
+
+      // Detectar tipo de arquivo e processar
+      const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+      
+      if (isXLSX) {
+        // Parse XLSX
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          await processData(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+      } else {
+        // Parse CSV
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: async (results) => {
+            await processData(results.data as any[]);
+          },
+          error: (error) => {
+            throw error;
+          },
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao processar",
@@ -185,7 +210,7 @@ const Correct = () => {
           <CardHeader>
             <CardTitle>Corrigir Provas</CardTitle>
             <CardDescription>
-              Envie um arquivo CSV com as respostas dos alunos para correção automática
+              Envie um arquivo CSV ou Excel com as respostas dos alunos para correção automática
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -206,11 +231,11 @@ const Correct = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Arquivo CSV</Label>
+              <Label>Arquivo de Respostas</Label>
               <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
                 <Input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileChange}
                   className="hidden"
                   id="csv-upload"
@@ -227,9 +252,9 @@ const Correct = () => {
                   ) : (
                     <>
                       <Upload className="h-12 w-12 text-muted-foreground" />
-                      <p className="font-medium">Clique para enviar</p>
+                      <p className="font-medium">Clique para enviar CSV ou Excel</p>
                       <p className="text-sm text-muted-foreground">
-                        Formato: CSV com colunas nome, matricula, q1, q2, q3...
+                        Formato: CSV/XLSX com colunas nome, matricula, q1, q2, q3...
                       </p>
                     </>
                   )}

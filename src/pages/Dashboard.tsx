@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  GraduationCap, 
   FileCheck, 
   FolderOpen, 
   History, 
   BarChart3,
   LogOut 
 } from "lucide-react";
+import FlemingLogo from "@/components/FlemingLogo";
 import { User } from "@supabase/supabase-js";
 
 const Dashboard = () => {
@@ -92,10 +92,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Fleming</h1>
-          </div>
+          <FlemingLogo size="md" />
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
               {user?.email}

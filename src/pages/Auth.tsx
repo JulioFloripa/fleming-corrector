@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap } from "lucide-react";
+import FlemingLogo from "@/components/FlemingLogo";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -95,9 +95,8 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5">
       <div className="w-full max-w-md p-4">
         <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2 mb-2">
-            <GraduationCap className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold text-foreground">Fleming</h1>
+          <div className="mb-2">
+            <FlemingLogo size="lg" />
           </div>
           <p className="text-muted-foreground text-center">
             Sistema de Correção de Provas

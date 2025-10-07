@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
+import FlemingLogo from "@/components/FlemingLogo";
 import { Textarea } from "@/components/ui/textarea";
 
 interface Template {
@@ -120,7 +121,7 @@ const Templates = () => {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
-              <GraduationCap className="h-6 w-6 text-primary" />
+              <FlemingLogo size="sm" showText={false} />
               <h1 className="text-xl font-bold">Gerenciar Gabaritos</h1>
             </div>
           </div>

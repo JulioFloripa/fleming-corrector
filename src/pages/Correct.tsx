@@ -4,20 +4,168 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Papa from "papaparse";
 
 const Correct = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     checkAuth();
+    loadTemplates();
   }, []);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
+    }
+  };
+
+  const loadTemplates = async () => {
+    const { data, error } = await supabase
+      .from("templates")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      toast({
+        title: "Erro ao carregar gabaritos",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setTemplates(data || []);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (!selectedFile.name.endsWith('.csv')) {
+        toast({
+          title: "Formato inválido",
+          description: "Por favor, envie um arquivo CSV",
+          variant: "destructive",
+        });
+        return;
+      }
+      setFile(selectedFile);
+    }
+  };
+
+  const processCorrection = async () => {
+    if (!selectedTemplate || !file) {
+      toast({
+        title: "Dados incompletos",
+        description: "Selecione um gabarito e envie um arquivo",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      // Carregar questões do template
+      const { data: questions, error: questionsError } = await supabase
+        .from("template_questions")
+        .select("*")
+        .eq("template_id", selectedTemplate)
+        .order("question_number");
+
+      if (questionsError) throw questionsError;
+
+      // Parse CSV
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          for (const row of results.data as any[]) {
+            const studentName = row.nome || row.Nome || row.NOME;
+            const studentId = row.matricula || row.Matricula || row.MATRICULA;
+            
+            if (!studentName) continue;
+
+            // Criar correção
+            const { data: correction, error: correctionError } = await supabase
+              .from("corrections")
+              .insert({
+                user_id: user?.id,
+                template_id: selectedTemplate,
+                student_name: studentName,
+                student_id: studentId,
+                status: "processing",
+              })
+              .select()
+              .single();
+
+            if (correctionError) continue;
+
+            let totalScore = 0;
+            let maxScore = 0;
+
+            // Processar respostas
+            for (const question of questions || []) {
+              const studentAnswer = row[`q${question.question_number}`] || row[`Q${question.question_number}`];
+              const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
+              const pointsEarned = isCorrect ? Number(question.points) : 0;
+
+              totalScore += pointsEarned;
+              maxScore += Number(question.points);
+
+              await supabase.from("student_answers").insert({
+                correction_id: correction.id,
+                question_number: question.question_number,
+                student_answer: studentAnswer,
+                correct_answer: question.correct_answer,
+                is_correct: isCorrect,
+                points_earned: pointsEarned,
+              });
+            }
+
+            // Atualizar correção com pontuação
+            await supabase
+              .from("corrections")
+              .update({
+                total_score: totalScore,
+                max_score: maxScore,
+                percentage: (totalScore / maxScore) * 100,
+                status: "completed",
+              })
+              .eq("id", correction.id);
+          }
+
+          toast({
+            title: "Correção concluída!",
+            description: `${results.data.length} provas corrigidas com sucesso`,
+          });
+
+          navigate("/history");
+        },
+        error: (error) => {
+          throw error;
+        },
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao processar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -35,19 +183,72 @@ const Correct = () => {
       <main className="container mx-auto px-4 py-8">
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
-            <CardTitle>Upload de Respostas</CardTitle>
+            <CardTitle>Corrigir Provas</CardTitle>
             <CardDescription>
-              Em breve: Upload de planilha com respostas dos alunos
+              Envie um arquivo CSV com as respostas dos alunos para correção automática
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Upload className="h-16 w-16 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground text-center mb-4">
-              Funcionalidade em desenvolvimento
-            </p>
-            <Button variant="outline" onClick={() => navigate("/templates")}>
-              Gerenciar Gabaritos
-            </Button>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label>Gabarito</Label>
+              <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o gabarito" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      {template.name} ({template.total_questions} questões)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Arquivo CSV</Label>
+              <div className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 transition-colors">
+                <Input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="csv-upload"
+                />
+                <label htmlFor="csv-upload" className="cursor-pointer flex flex-col items-center gap-2">
+                  {file ? (
+                    <>
+                      <FileText className="h-12 w-12 text-primary" />
+                      <p className="font-medium">{file.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Clique para trocar o arquivo
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-12 w-12 text-muted-foreground" />
+                      <p className="font-medium">Clique para enviar</p>
+                      <p className="text-sm text-muted-foreground">
+                        Formato: CSV com colunas nome, matricula, q1, q2, q3...
+                      </p>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                onClick={processCorrection}
+                disabled={!selectedTemplate || !file || processing}
+                className="flex-1"
+              >
+                {processing ? "Processando..." : "Corrigir Provas"}
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/templates")}>
+                Gerenciar Gabaritos
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </main>

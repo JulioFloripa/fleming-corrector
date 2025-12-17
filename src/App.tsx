@@ -11,6 +11,8 @@ import TemplateEdit from "./pages/TemplateEdit";
 import Correct from "./pages/Correct";
 import History from "./pages/History";
 import Reports from "./pages/Reports";
+import Boletins from "./pages/Boletins";
+import BoletimAcafe from "./pages/BoletimAcafe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +32,8 @@ const App = () => (
           <Route path="/correct" element={<Correct />} />
           <Route path="/history" element={<History />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/boletins" element={<Boletins />} />
+          <Route path="/boletins/acafe" element={<BoletimAcafe />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

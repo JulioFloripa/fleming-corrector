@@ -80,10 +80,10 @@ const Dashboard = () => {
       gradient: "from-secondary to-primary",
     },
     {
-      title: "Relatórios",
-      description: "Visualize estatísticas e relatórios",
+      title: "Boletins",
+      description: "Gere boletins de desempenho dos alunos",
       icon: BarChart3,
-      path: "/reports",
+      path: "/boletins",
       gradient: "from-primary/80 to-accent/80",
     },
   ];

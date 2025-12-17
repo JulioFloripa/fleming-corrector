@@ -8,12 +8,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save } from "lucide-react";
+import { ACAFE_SUBJECTS } from "@/lib/acafe-subjects";
 
 interface TemplateQuestion {
   id: string;
   question_number: number;
   correct_answer: string;
   points: number;
+  subject: string | null;
 }
 
 const TemplateEdit = () => {
@@ -72,6 +74,7 @@ const TemplateEdit = () => {
           question_number: i + 1,
           correct_answer: "A",
           points: 1,
+          subject: null,
         })
       );
       setQuestions(emptyQuestions);
@@ -95,6 +98,7 @@ const TemplateEdit = () => {
       question_number: q.question_number,
       correct_answer: q.correct_answer,
       points: q.points,
+      subject: q.subject,
     }));
 
     const { error } = await supabase.from("template_questions").insert(questionsToInsert);
@@ -119,6 +123,8 @@ const TemplateEdit = () => {
     setQuestions(newQuestions);
   };
 
+  const isAcafe = template?.exam_type === "ACAFE";
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -138,7 +144,7 @@ const TemplateEdit = () => {
             <div>
               <h1 className="text-xl font-bold">{template?.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {template?.total_questions} questões
+                {template?.total_questions} questões • {template?.exam_type}
               </p>
             </div>
           </div>
@@ -179,6 +185,28 @@ const TemplateEdit = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  {isAcafe && (
+                    <div className="space-y-2">
+                      <Label htmlFor={`subject-${index}`} className="text-sm">
+                        Disciplina
+                      </Label>
+                      <Select
+                        value={question.subject || ""}
+                        onValueChange={(value) => updateQuestion(index, "subject", value)}
+                      >
+                        <SelectTrigger id={`subject-${index}`}>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACAFE_SUBJECTS.map((subject) => (
+                            <SelectItem key={subject.value} value={subject.value}>
+                              {subject.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor={`points-${index}`} className="text-sm">
                       Pontos

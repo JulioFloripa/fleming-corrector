@@ -139,6 +139,7 @@ export type Database = {
           id: string
           points: number | null
           question_number: number
+          subject: string | null
           template_id: string
         }
         Insert: {
@@ -147,6 +148,7 @@ export type Database = {
           id?: string
           points?: number | null
           question_number: number
+          subject?: string | null
           template_id: string
         }
         Update: {
@@ -155,6 +157,7 @@ export type Database = {
           id?: string
           points?: number | null
           question_number?: number
+          subject?: string | null
           template_id?: string
         }
         Relationships: [

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Papa from "papaparse";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const Correct = () => {
   const navigate = useNavigate();
@@ -59,11 +59,20 @@ const Correct = () => {
       headers.push(`Questão ${String(i).padStart(2, '0')}`);
     }
 
-    const ws = XLSX.utils.aoa_to_sheet([headers]);
-    ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 2, 12) }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Respostas");
-    XLSX.writeFile(wb, `modelo_${template.name.replace(/\s+/g, '_')}.xlsx`);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("Respostas");
+    ws.addRow(headers);
+    headers.forEach((h, i) => {
+      ws.getColumn(i + 1).width = Math.max(h.length + 2, 12);
+    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `modelo_${template.name.replace(/\s+/g, '_')}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,32 +187,34 @@ const Correct = () => {
       // Detectar tipo de arquivo e processar
       const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
       
-      const parseFile = (): Promise<any[]> => {
-        return new Promise((resolve, reject) => {
-          if (isXLSX) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              try {
-                const data = new Uint8Array(e.target?.result as ArrayBuffer);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                resolve(jsonData);
-              } catch (err) {
-                reject(err);
-              }
-            };
-            reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
-            reader.readAsArrayBuffer(file);
-          } else {
+      const parseFile = async (): Promise<any[]> => {
+        if (isXLSX) {
+          const buffer = await file.arrayBuffer();
+          const wb = new ExcelJS.Workbook();
+          await wb.xlsx.load(buffer);
+          const sheet = wb.worksheets[0];
+          if (!sheet || sheet.rowCount < 2) return [];
+          const headers = (sheet.getRow(1).values as any[]).slice(1); // ExcelJS is 1-indexed
+          const rows: any[] = [];
+          sheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const obj: any = {};
+            (row.values as any[]).slice(1).forEach((val, i) => {
+              obj[headers[i]] = val;
+            });
+            rows.push(obj);
+          });
+          return rows;
+        } else {
+          return new Promise((resolve, reject) => {
             Papa.parse(file, {
               header: true,
               skipEmptyLines: true,
               complete: (results) => resolve(results.data as any[]),
               error: (error) => reject(error),
             });
-          }
-        });
+          });
+        }
       };
 
       const parsedData = await parseFile();

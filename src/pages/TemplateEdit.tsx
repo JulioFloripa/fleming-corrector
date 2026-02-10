@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save } from "lucide-react";
-import { ACAFE_SUBJECTS } from "@/lib/acafe-subjects";
 
 interface TemplateQuestion {
   id: string;
@@ -19,17 +18,37 @@ interface TemplateQuestion {
   topic: string | null;
 }
 
+interface DisciplineOption {
+  id: string;
+  name: string;
+  topics: { id: string; name: string }[];
+}
+
 const TemplateEdit = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [template, setTemplate] = useState<any>(null);
   const [questions, setQuestions] = useState<TemplateQuestion[]>([]);
+  const [disciplines, setDisciplines] = useState<DisciplineOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadTemplate();
+    loadDisciplines();
   }, [id]);
+
+  const loadDisciplines = async () => {
+    const { data: discData } = await supabase.from("disciplines").select("*").order("name");
+    const { data: topicsData } = await supabase.from("discipline_topics").select("*").order("name");
+    
+    const mapped: DisciplineOption[] = (discData || []).map((d) => ({
+      id: d.id,
+      name: d.name,
+      topics: (topicsData || []).filter((t) => t.discipline_id === d.id),
+    }));
+    setDisciplines(mapped);
+  };
 
   const loadTemplate = async () => {
     if (!id) return;
@@ -126,7 +145,11 @@ const TemplateEdit = () => {
     setQuestions(newQuestions);
   };
 
-  const isAcafe = template?.exam_type === "ACAFE";
+  const getTopicsForDiscipline = (disciplineName: string | null) => {
+    if (!disciplineName) return [];
+    const disc = disciplines.find((d) => d.name === disciplineName);
+    return disc?.topics || [];
+  };
 
   if (loading) {
     return (
@@ -188,40 +211,58 @@ const TemplateEdit = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  {isAcafe && (
-                    <div className="space-y-2">
-                      <Label htmlFor={`subject-${index}`} className="text-sm">
-                        Disciplina
-                      </Label>
+                  <div className="space-y-2">
+                    <Label htmlFor={`subject-${index}`} className="text-sm">
+                      Disciplina
+                    </Label>
+                    <Select
+                      value={question.subject || ""}
+                      onValueChange={(value) => {
+                        updateQuestion(index, "subject", value);
+                        updateQuestion(index, "topic", null);
+                      }}
+                    >
+                      <SelectTrigger id={`subject-${index}`}>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {disciplines.map((disc) => (
+                          <SelectItem key={disc.id} value={disc.name}>
+                            {disc.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`topic-${index}`} className="text-sm">
+                      Conteúdo
+                    </Label>
+                    {getTopicsForDiscipline(question.subject).length > 0 ? (
                       <Select
-                        value={question.subject || ""}
-                        onValueChange={(value) => updateQuestion(index, "subject", value)}
+                        value={question.topic || ""}
+                        onValueChange={(value) => updateQuestion(index, "topic", value)}
                       >
-                        <SelectTrigger id={`subject-${index}`}>
-                          <SelectValue placeholder="Selecione..." />
+                        <SelectTrigger id={`topic-${index}`}>
+                          <SelectValue placeholder="Selecione o conteúdo..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {ACAFE_SUBJECTS.map((subject) => (
-                            <SelectItem key={subject.value} value={subject.value}>
-                              {subject.label}
+                          {getTopicsForDiscipline(question.subject).map((t) => (
+                            <SelectItem key={t.id} value={t.name}>
+                              {t.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor={`topic-${index}`} className="text-sm">
-                      Tema / Conteúdo
-                    </Label>
-                    <Input
-                      id={`topic-${index}`}
-                      placeholder="Ex: Revolução Francesa, Cinemática..."
-                      value={question.topic || ""}
-                      onChange={(e) =>
-                        updateQuestion(index, "topic", e.target.value || null)
-                      }
-                    />
+                    ) : (
+                      <Input
+                        id={`topic-${index}`}
+                        placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina primeiro"}
+                        value={question.topic || ""}
+                        onChange={(e) => updateQuestion(index, "topic", e.target.value || null)}
+                        disabled={!question.subject}
+                      />
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor={`points-${index}`} className="text-sm">

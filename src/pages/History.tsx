@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Clock, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
+import { recalculateByTemplate } from "@/lib/recalculate";
 
 interface CorrectionWithTemplate {
   id: string;
@@ -30,6 +31,7 @@ const History = () => {
   const { toast } = useToast();
   const [corrections, setCorrections] = useState<CorrectionWithTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -70,6 +72,27 @@ const History = () => {
     setCorrections(prev => prev.filter(c => c.id !== id));
   };
 
+  const handleRecalculate = async (templateId: string, templateName: string) => {
+    setRecalculating(templateId);
+    const result = await recalculateByTemplate(templateId);
+    setRecalculating(null);
+
+    if (result.success) {
+      toast({ title: `${result.correctionsUpdated} correção(ões) de "${templateName}" recalculada(s)!` });
+      await loadCorrections();
+    } else {
+      toast({ variant: "destructive", title: "Erro ao recalcular", description: result.error });
+    }
+  };
+
+  // Get unique templates from corrections
+  const uniqueTemplates = corrections.reduce((acc, c) => {
+    if (!acc.find(t => t.id === c.template_id)) {
+      acc.push({ id: c.template_id, name: c.templates?.name || "-" });
+    }
+    return acc;
+  }, [] as { id: string; name: string }[]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -109,8 +132,32 @@ const History = () => {
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
-                <CardDescription>Histórico de todas as correções do sistema</CardDescription>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
+                    <CardDescription>Histórico de todas as correções do sistema</CardDescription>
+                  </div>
+                  {uniqueTemplates.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {uniqueTemplates.map(t => (
+                        <Button
+                          key={t.id}
+                          variant="outline"
+                          size="sm"
+                          disabled={recalculating === t.id}
+                          onClick={() => handleRecalculate(t.id, t.name)}
+                        >
+                          {recalculating === t.id ? (
+                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-1" />
+                          )}
+                          Recalcular: {t.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>

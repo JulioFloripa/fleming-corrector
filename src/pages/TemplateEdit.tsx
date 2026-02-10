@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw } from "lucide-react";
+import { recalculateByTemplate } from "@/lib/recalculate";
 
 interface TemplateQuestion {
   id: string;
@@ -32,7 +34,8 @@ const TemplateEdit = () => {
   const [questions, setQuestions] = useState<TemplateQuestion[]>([]);
   const [disciplines, setDisciplines] = useState<DisciplineOption[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [showRecalcDialog, setShowRecalcDialog] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   useEffect(() => {
     loadTemplate();
     loadDisciplines();
@@ -131,12 +134,37 @@ const TemplateEdit = () => {
         title: "Erro ao salvar questões",
         description: error.message,
       });
+      return;
+    }
+
+    toast({ title: "Gabarito salvo com sucesso!" });
+
+    // Check if there are corrections linked to this template
+    const { count } = await supabase
+      .from("corrections")
+      .select("id", { count: "exact", head: true })
+      .eq("template_id", id);
+
+    if (count && count > 0) {
+      setShowRecalcDialog(true);
     } else {
-      toast({
-        title: "Gabarito salvo com sucesso!",
-      });
       navigate("/templates");
     }
+  };
+
+  const handleRecalculate = async () => {
+    if (!id) return;
+    setRecalculating(true);
+    const result = await recalculateByTemplate(id);
+    setRecalculating(false);
+    setShowRecalcDialog(false);
+
+    if (result.success) {
+      toast({ title: `${result.correctionsUpdated} correção(ões) recalculada(s) com sucesso!` });
+    } else {
+      toast({ variant: "destructive", title: "Erro ao recalcular", description: result.error });
+    }
+    navigate("/templates");
   };
 
   const updateQuestion = (index: number, fields: Partial<TemplateQuestion>) => {
@@ -288,6 +316,32 @@ const TemplateEdit = () => {
           </CardContent>
         </Card>
       </main>
+
+      <AlertDialog open={showRecalcDialog} onOpenChange={setShowRecalcDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Recalcular correções?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Existem correções vinculadas a este gabarito. Deseja recalcular os resultados com base nas novas respostas do gabarito?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => navigate("/templates")} disabled={recalculating}>
+              Não, apenas salvar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleRecalculate} disabled={recalculating}>
+              {recalculating ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Recalculando...
+                </>
+              ) : (
+                "Sim, recalcular"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

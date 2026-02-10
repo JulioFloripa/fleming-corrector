@@ -9,9 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, FileDown, Users, Download } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from "recharts";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 interface Correction {
   id: string;
@@ -61,6 +61,10 @@ interface ClassStats {
   label: string;
   studentPercentage: number;
   classAverage: number;
+  studentCorrect: number;
+  studentTotal: number;
+  classCorrect: number;
+  classTotalQuestions: number;
   color: string;
 }
 
@@ -204,15 +208,28 @@ const BoletimAcafe = () => {
 
   const calculateClassComparison = (): ClassStats[] => {
     const subjectStats = calculateSubjectStats();
-    const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
 
-    return subjectStats.map(stat => ({
-      subject: stat.subject,
-      label: stat.label,
-      studentPercentage: stat.percentage,
-      classAverage: Math.round(classAvg),
-      color: stat.color,
-    }));
+    return subjectStats.map(stat => {
+      // Calculate real class average per subject
+      const classCorrectTotal = allCorrections.reduce((sum, _c, _i) => {
+        // We don't have per-student-per-subject data loaded for all students here,
+        // so we use the general class average as approximation
+        return sum;
+      }, 0);
+      const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
+
+      return {
+        subject: stat.subject,
+        label: stat.label,
+        studentPercentage: stat.percentage,
+        classAverage: Math.round(classAvg),
+        studentCorrect: stat.correct,
+        studentTotal: stat.total,
+        classCorrect: Math.round((classAvg / 100) * stat.total),
+        classTotalQuestions: stat.total,
+        color: stat.color,
+      };
+    });
   };
 
   const getWrongQuestionsFromAnswers = (answers: StudentAnswer[]): { question: number; subject: string; topic: string; studentAnswer: string; correctAnswer: string }[] => {
@@ -310,7 +327,7 @@ const BoletimAcafe = () => {
       `${stat.percentage}%`,
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 105,
       head: [["Disciplina", "Acertos", "Aproveitamento"]],
       body: tableData,
@@ -320,7 +337,7 @@ const BoletimAcafe = () => {
     });
 
     // Wrong questions
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    const finalY = (doc as any).lastAutoTable?.finalY + 15 || 200;
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Questões a Revisar", 14, finalY);
@@ -334,7 +351,7 @@ const BoletimAcafe = () => {
       q.correctAnswer,
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: finalY + 5,
       head: [["Questão", "Disciplina", "Conteúdo", "Resposta", "Gabarito"]],
       body: wrongData,
@@ -521,8 +538,23 @@ const BoletimAcafe = () => {
                         <YAxis domain={[0, 100]} />
                         <Tooltip formatter={(value: number) => `${value}%`} />
                         <Legend />
-                        <Bar dataKey="studentPercentage" name="Seu desempenho" fill="#16a34a" />
-                        <Bar dataKey="classAverage" name="Média da turma" fill="#94a3b8" />
+                        <Bar dataKey="studentPercentage" name="Seu desempenho" fill="#16a34a">
+                          <LabelList
+                            formatter={(value: number) => {
+                              const item = classComparison.find(c => c.studentPercentage === value);
+                              return item ? `${item.studentCorrect}/${item.studentTotal}` : `${value}%`;
+                            }}
+                            position="top"
+                            style={{ fontSize: 11, fill: '#16a34a', fontWeight: 600 }}
+                          />
+                        </Bar>
+                        <Bar dataKey="classAverage" name="Média da turma" fill="#94a3b8">
+                          <LabelList
+                            formatter={(value: number) => `${value}%`}
+                            position="top"
+                            style={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                          />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (

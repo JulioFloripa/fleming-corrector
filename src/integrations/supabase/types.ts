@@ -141,6 +141,7 @@ export type Database = {
           question_number: number
           subject: string | null
           template_id: string
+          topic: string | null
         }
         Insert: {
           correct_answer: string
@@ -150,6 +151,7 @@ export type Database = {
           question_number: number
           subject?: string | null
           template_id: string
+          topic?: string | null
         }
         Update: {
           correct_answer?: string
@@ -159,6 +161,7 @@ export type Database = {
           question_number?: number
           subject?: string | null
           template_id?: string
+          topic?: string | null
         }
         Relationships: [
           {

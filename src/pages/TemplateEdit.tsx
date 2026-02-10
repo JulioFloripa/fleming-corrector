@@ -186,102 +186,104 @@ const TemplateEdit = () => {
           <CardHeader>
             <CardTitle>Gabarito das Questões</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {questions.map((question, index) => (
-                <div key={question.id} className="border rounded-lg p-4 space-y-3">
-                  <Label className="font-bold">Questão {question.question_number}</Label>
-                  <div className="space-y-2">
-                    <Label htmlFor={`answer-${index}`} className="text-sm">
-                      Resposta Correta
-                    </Label>
-                    <Select
-                      value={question.correct_answer}
-                      onValueChange={(value) => updateQuestion(index, "correct_answer", value)}
-                    >
-                      <SelectTrigger id={`answer-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A">A</SelectItem>
-                        <SelectItem value="B">B</SelectItem>
-                        <SelectItem value="C">C</SelectItem>
-                        <SelectItem value="D">D</SelectItem>
-                        <SelectItem value="E">E</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`subject-${index}`} className="text-sm">
-                      Disciplina
-                    </Label>
-                    <Select
-                      value={question.subject || ""}
-                      onValueChange={(value) => {
-                        updateQuestion(index, "subject", value);
-                        updateQuestion(index, "topic", null);
-                      }}
-                    >
-                      <SelectTrigger id={`subject-${index}`}>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {disciplines.map((disc) => (
-                          <SelectItem key={disc.id} value={disc.name}>
-                            {disc.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`topic-${index}`} className="text-sm">
-                      Conteúdo
-                    </Label>
-                    {getTopicsForDiscipline(question.subject).length > 0 ? (
+          <CardContent className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">#</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-24">Resposta</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Disciplina</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">Conteúdo</th>
+                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-20">Pontos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {questions.map((question, index) => (
+                  <tr key={question.id} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="py-2 px-2 font-medium">{question.question_number}</td>
+                    <td className="py-2 px-2">
                       <Select
-                        value={question.topic || ""}
-                        onValueChange={(value) => updateQuestion(index, "topic", value)}
+                        value={question.correct_answer}
+                        onValueChange={(value) => updateQuestion(index, "correct_answer", value)}
                       >
-                        <SelectTrigger id={`topic-${index}`}>
-                          <SelectValue placeholder="Selecione o conteúdo..." />
+                        <SelectTrigger className="h-8 w-20">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {getTopicsForDiscipline(question.subject).map((t) => (
-                            <SelectItem key={t.id} value={t.name}>
-                              {t.name}
+                          <SelectItem value="A">A</SelectItem>
+                          <SelectItem value="B">B</SelectItem>
+                          <SelectItem value="C">C</SelectItem>
+                          <SelectItem value="D">D</SelectItem>
+                          <SelectItem value="E">E</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="py-2 px-2">
+                      <Select
+                        value={question.subject || "__none__"}
+                        onValueChange={(value) => {
+                          const realValue = value === "__none__" ? null : value;
+                          updateQuestion(index, "subject", realValue);
+                          updateQuestion(index, "topic", null);
+                        }}
+                      >
+                        <SelectTrigger className="h-8">
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">Selecione...</SelectItem>
+                          {disciplines.map((disc) => (
+                            <SelectItem key={disc.id} value={disc.name}>
+                              {disc.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    ) : (
+                    </td>
+                    <td className="py-2 px-2">
+                      {getTopicsForDiscipline(question.subject).length > 0 ? (
+                        <Select
+                          value={question.topic || "__none__"}
+                          onValueChange={(value) => updateQuestion(index, "topic", value === "__none__" ? null : value)}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Selecione...</SelectItem>
+                            {getTopicsForDiscipline(question.subject).map((t) => (
+                              <SelectItem key={t.id} value={t.name}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          className="h-8"
+                          placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina"}
+                          value={question.topic || ""}
+                          onChange={(e) => updateQuestion(index, "topic", e.target.value || null)}
+                          disabled={!question.subject}
+                        />
+                      )}
+                    </td>
+                    <td className="py-2 px-2">
                       <Input
-                        id={`topic-${index}`}
-                        placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina primeiro"}
-                        value={question.topic || ""}
-                        onChange={(e) => updateQuestion(index, "topic", e.target.value || null)}
-                        disabled={!question.subject}
+                        className="h-8 w-20"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={question.points}
+                        onChange={(e) =>
+                          updateQuestion(index, "points", parseFloat(e.target.value) || 0)
+                        }
                       />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor={`points-${index}`} className="text-sm">
-                      Pontos
-                    </Label>
-                    <Input
-                      id={`points-${index}`}
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={question.points}
-                      onChange={(e) =>
-                        updateQuestion(index, "points", parseFloat(e.target.value) || 0)
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </CardContent>
         </Card>
       </main>

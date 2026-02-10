@@ -178,30 +178,36 @@ const Correct = () => {
       // Detectar tipo de arquivo e processar
       const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
       
-      if (isXLSX) {
-        // Parse XLSX
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-          await processData(jsonData);
-        };
-        reader.readAsArrayBuffer(file);
-      } else {
-        // Parse CSV
-        Papa.parse(file, {
-          header: true,
-          skipEmptyLines: true,
-          complete: async (results) => {
-            await processData(results.data as any[]);
-          },
-          error: (error) => {
-            throw error;
-          },
+      const parseFile = (): Promise<any[]> => {
+        return new Promise((resolve, reject) => {
+          if (isXLSX) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const data = new Uint8Array(e.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                resolve(jsonData);
+              } catch (err) {
+                reject(err);
+              }
+            };
+            reader.onerror = () => reject(new Error("Erro ao ler arquivo"));
+            reader.readAsArrayBuffer(file);
+          } else {
+            Papa.parse(file, {
+              header: true,
+              skipEmptyLines: true,
+              complete: (results) => resolve(results.data as any[]),
+              error: (error) => reject(error),
+            });
+          }
         });
-      }
+      };
+
+      const parsedData = await parseFile();
+      await processData(parsedData);
     } catch (error: any) {
       toast({
         title: "Erro ao processar",

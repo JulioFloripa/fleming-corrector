@@ -16,6 +16,7 @@ interface TemplateQuestion {
   correct_answer: string;
   points: number;
   subject: string | null;
+  topic: string | null;
 }
 
 const TemplateEdit = () => {
@@ -75,6 +76,7 @@ const TemplateEdit = () => {
           correct_answer: "A",
           points: 1,
           subject: null,
+          topic: null,
         })
       );
       setQuestions(emptyQuestions);
@@ -99,6 +101,7 @@ const TemplateEdit = () => {
       correct_answer: q.correct_answer,
       points: q.points,
       subject: q.subject,
+      topic: q.topic,
     }));
 
     const { error } = await supabase.from("template_questions").insert(questionsToInsert);
@@ -207,6 +210,19 @@ const TemplateEdit = () => {
                       </Select>
                     </div>
                   )}
+                  <div className="space-y-2">
+                    <Label htmlFor={`topic-${index}`} className="text-sm">
+                      Tema / Conteúdo
+                    </Label>
+                    <Input
+                      id={`topic-${index}`}
+                      placeholder="Ex: Revolução Francesa, Cinemática..."
+                      value={question.topic || ""}
+                      onChange={(e) =>
+                        updateQuestion(index, "topic", e.target.value || null)
+                      }
+                    />
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor={`points-${index}`} className="text-sm">
                       Pontos

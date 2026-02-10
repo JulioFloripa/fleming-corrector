@@ -54,12 +54,13 @@ const Correct = () => {
     const template = templates.find(t => t.id === selectedTemplate);
     if (!template) return;
 
-    const headers = ["nome", "matricula"];
+    const headers = ["ID", "E-mail", "Nome", "Sede", "Idioma escolhido"];
     for (let i = 1; i <= template.total_questions; i++) {
-      headers.push(`q${i}`);
+      headers.push(`Questão ${String(i).padStart(2, '0')}`);
     }
 
     const ws = XLSX.utils.aoa_to_sheet([headers]);
+    ws['!cols'] = headers.map((h) => ({ wch: Math.max(h.length + 2, 12) }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Respostas");
     XLSX.writeFile(wb, `modelo_${template.name.replace(/\s+/g, '_')}.xlsx`);
@@ -110,8 +111,8 @@ const Correct = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         for (const row of data) {
-          const studentName = row.nome || row.Nome || row.NOME;
-          const studentId = row.matricula || row.Matricula || row.MATRICULA;
+          const studentName = row.Nome || row.nome || row.NOME;
+          const studentId = row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA;
           
           if (!studentName) continue;
 
@@ -122,7 +123,7 @@ const Correct = () => {
               user_id: user?.id,
               template_id: selectedTemplate,
               student_name: studentName,
-              student_id: studentId,
+              student_id: studentId?.toString(),
               status: "processing",
             })
             .select()
@@ -135,7 +136,9 @@ const Correct = () => {
 
           // Processar respostas
           for (const question of questions || []) {
-            const studentAnswer = row[`q${question.question_number}`] || row[`Q${question.question_number}`];
+            const qNum = question.question_number;
+            const paddedNum = String(qNum).padStart(2, '0');
+            const studentAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
             const isCorrect = studentAnswer?.toString().toUpperCase() === question.correct_answer.toUpperCase();
             const pointsEarned = isCorrect ? Number(question.points) : 0;
 

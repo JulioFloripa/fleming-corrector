@@ -49,6 +49,22 @@ const Correct = () => {
     setTemplates(data || []);
   };
 
+  const downloadTemplate = async () => {
+    if (!selectedTemplate) return;
+    const template = templates.find(t => t.id === selectedTemplate);
+    if (!template) return;
+
+    const headers = ["nome", "matricula"];
+    for (let i = 1; i <= template.total_questions; i++) {
+      headers.push(`q${i}`);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Respostas");
+    XLSX.writeFile(wb, `modelo_${template.name.replace(/\s+/g, '_')}.xlsx`);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -228,6 +244,12 @@ const Correct = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {selectedTemplate && (
+                <Button variant="outline" size="sm" onClick={downloadTemplate} className="mt-2">
+                  <FileText className="h-4 w-4 mr-1" />
+                  Baixar modelo Excel
+                </Button>
+              )}
             </div>
 
             <div className="space-y-2">

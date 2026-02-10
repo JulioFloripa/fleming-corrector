@@ -104,7 +104,7 @@ const BoletimAcafe = () => {
     const { data, error } = await supabase
       .from("templates")
       .select("*")
-      .eq("exam_type", "ACAFE")
+      .ilike("exam_type", "acafe")
       .order("created_at", { ascending: false });
 
     if (error) {

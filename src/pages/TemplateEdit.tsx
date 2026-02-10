@@ -139,10 +139,12 @@ const TemplateEdit = () => {
     }
   };
 
-  const updateQuestion = (index: number, field: keyof TemplateQuestion, value: any) => {
-    const newQuestions = [...questions];
-    newQuestions[index] = { ...newQuestions[index], [field]: value };
-    setQuestions(newQuestions);
+  const updateQuestion = (index: number, fields: Partial<TemplateQuestion>) => {
+    setQuestions(prev => {
+      const newQuestions = [...prev];
+      newQuestions[index] = { ...newQuestions[index], ...fields };
+      return newQuestions;
+    });
   };
 
   const getTopicsForDiscipline = (disciplineName: string | null) => {
@@ -204,7 +206,7 @@ const TemplateEdit = () => {
                     <td className="py-2 px-2">
                       <Select
                         value={question.correct_answer}
-                        onValueChange={(value) => updateQuestion(index, "correct_answer", value)}
+                        onValueChange={(value) => updateQuestion(index, { correct_answer: value })}
                       >
                         <SelectTrigger className="h-8 w-20">
                           <SelectValue />
@@ -223,8 +225,7 @@ const TemplateEdit = () => {
                         value={question.subject || "__none__"}
                         onValueChange={(value) => {
                           const realValue = value === "__none__" ? null : value;
-                          updateQuestion(index, "subject", realValue);
-                          updateQuestion(index, "topic", null);
+                          updateQuestion(index, { subject: realValue, topic: null });
                         }}
                       >
                         <SelectTrigger className="h-8">
@@ -244,7 +245,7 @@ const TemplateEdit = () => {
                       {getTopicsForDiscipline(question.subject).length > 0 ? (
                         <Select
                           value={question.topic || "__none__"}
-                          onValueChange={(value) => updateQuestion(index, "topic", value === "__none__" ? null : value)}
+                          onValueChange={(value) => updateQuestion(index, { topic: value === "__none__" ? null : value })}
                         >
                           <SelectTrigger className="h-8">
                             <SelectValue placeholder="Selecione..." />
@@ -263,7 +264,7 @@ const TemplateEdit = () => {
                           className="h-8"
                           placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina"}
                           value={question.topic || ""}
-                          onChange={(e) => updateQuestion(index, "topic", e.target.value || null)}
+                          onChange={(e) => updateQuestion(index, { topic: e.target.value || null })}
                           disabled={!question.subject}
                         />
                       )}
@@ -276,7 +277,7 @@ const TemplateEdit = () => {
                         min="0"
                         value={question.points}
                         onChange={(e) =>
-                          updateQuestion(index, "points", parseFloat(e.target.value) || 0)
+                          updateQuestion(index, { points: parseFloat(e.target.value) || 0 })
                         }
                       />
                     </td>

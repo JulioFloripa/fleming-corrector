@@ -9,6 +9,7 @@ import {
   FolderOpen, 
   History, 
   BarChart3,
+  BookOpen,
   LogOut 
 } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
@@ -85,6 +86,13 @@ const Dashboard = () => {
       icon: BarChart3,
       path: "/boletins",
       gradient: "from-primary/80 to-accent/80",
+    },
+    {
+      title: "Disciplinas",
+      description: "Cadastre disciplinas e conteúdos",
+      icon: BookOpen,
+      path: "/disciplines",
+      gradient: "from-accent/80 to-secondary/80",
     },
   ];
 

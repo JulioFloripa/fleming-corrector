@@ -64,6 +64,56 @@ export type Database = {
           },
         ]
       }
+      discipline_topics: {
+        Row: {
+          created_at: string | null
+          discipline_id: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          discipline_id: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          discipline_id?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discipline_topics_discipline_id_fkey"
+            columns: ["discipline_id"]
+            isOneToOne: false
+            referencedRelation: "disciplines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disciplines: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

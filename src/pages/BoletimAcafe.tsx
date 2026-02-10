@@ -6,10 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, FileDown, Printer, Users } from "lucide-react";
+import { ArrowLeft, FileDown, Users, Download } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
-import { ACAFE_SUBJECTS, getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
+import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -37,6 +37,7 @@ interface TemplateQuestion {
   correct_answer: string;
   points: number;
   subject: string | null;
+  topic: string | null;
 }
 
 interface Template {
@@ -74,6 +75,7 @@ const BoletimAcafe = () => {
   const [templateQuestions, setTemplateQuestions] = useState<TemplateQuestion[]>([]);
   const [allCorrections, setAllCorrections] = useState<Correction[]>([]);
   const [loading, setLoading] = useState(false);
+  const [generatingAll, setGeneratingAll] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -159,10 +161,19 @@ const BoletimAcafe = () => {
     setLoading(false);
   };
 
-  const calculateSubjectStats = (): SubjectStats[] => {
+  const loadAnswersForCorrection = async (correctionId: string): Promise<StudentAnswer[]> => {
+    const { data } = await supabase
+      .from("student_answers")
+      .select("*")
+      .eq("correction_id", correctionId)
+      .order("question_number");
+    return data || [];
+  };
+
+  const calculateSubjectStatsFromAnswers = (answers: StudentAnswer[]): SubjectStats[] => {
     const stats: Record<string, { correct: number; total: number }> = {};
 
-    studentAnswers.forEach((answer) => {
+    answers.forEach((answer) => {
       const question = templateQuestions.find(q => q.question_number === answer.question_number);
       const subject = question?.subject || "sem_disciplina";
 
@@ -187,18 +198,12 @@ const BoletimAcafe = () => {
       }));
   };
 
+  const calculateSubjectStats = (): SubjectStats[] => {
+    return calculateSubjectStatsFromAnswers(studentAnswers);
+  };
+
   const calculateClassComparison = (): ClassStats[] => {
     const subjectStats = calculateSubjectStats();
-    
-    // Calculate class average per subject
-    const classAverages: Record<string, { sum: number; count: number }> = {};
-
-    allCorrections.forEach(async (correction) => {
-      // This is simplified - in production, we'd fetch all answers
-      // For now, we'll show student vs overall average
-    });
-
-    // Use overall class average as approximation
     const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
 
     return subjectStats.map(stat => ({
@@ -210,27 +215,32 @@ const BoletimAcafe = () => {
     }));
   };
 
-  const getWrongQuestions = (): { question: number; subject: string; studentAnswer: string; correctAnswer: string }[] => {
-    return studentAnswers
+  const getWrongQuestionsFromAnswers = (answers: StudentAnswer[]): { question: number; subject: string; topic: string; studentAnswer: string; correctAnswer: string }[] => {
+    return answers
       .filter(a => !a.is_correct)
       .map(a => {
         const question = templateQuestions.find(q => q.question_number === a.question_number);
         return {
           question: a.question_number,
           subject: getSubjectLabel(question?.subject || ""),
+          topic: question?.topic || "",
           studentAnswer: a.student_answer || "-",
           correctAnswer: a.correct_answer,
         };
       });
   };
 
-  const calculateRanking = (): number => {
-    if (!selectedCorrection || allCorrections.length === 0) return 0;
-    const currentCorrection = allCorrections.find(c => c.id === selectedCorrection);
-    if (!currentCorrection) return 0;
+  const getWrongQuestions = () => getWrongQuestionsFromAnswers(studentAnswers);
 
+  const calculateRankingFor = (correctionId: string): number => {
+    if (allCorrections.length === 0) return 0;
     const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
-    return sorted.findIndex(c => c.id === selectedCorrection) + 1;
+    return sorted.findIndex(c => c.id === correctionId) + 1;
+  };
+
+  const calculateRanking = (): number => {
+    if (!selectedCorrection) return 0;
+    return calculateRankingFor(selectedCorrection);
   };
 
   const selectedStudent = corrections.find(c => c.id === selectedCorrection);
@@ -239,17 +249,25 @@ const BoletimAcafe = () => {
   const wrongQuestions = getWrongQuestions();
   const ranking = calculateRanking();
 
-  const generatePDF = () => {
-    if (!selectedStudent) return;
+  const buildPDFForStudent = (
+    doc: jsPDF,
+    student: Correction,
+    answers: StudentAnswer[],
+    studentRanking: number,
+    isFirst: boolean
+  ) => {
+    if (!isFirst) {
+      doc.addPage();
+    }
 
-    const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const stats = calculateSubjectStatsFromAnswers(answers);
+    const wrong = getWrongQuestionsFromAnswers(answers);
 
-    // Header with Fleming green
-    doc.setFillColor(22, 163, 74); // Fleming green
+    // Header
+    doc.setFillColor(22, 163, 74);
     doc.rect(0, 0, pageWidth, 40, "F");
 
-    // Title
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.text("BOLETIM DE DESEMPENHO - ACAFE", pageWidth / 2, 18, { align: "center" });
@@ -259,12 +277,12 @@ const BoletimAcafe = () => {
     // Student info
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(14);
-    doc.text(`Aluno: ${selectedStudent.student_name}`, 14, 55);
+    doc.text(`Aluno: ${student.student_name}`, 14, 55);
     doc.setFontSize(11);
-    doc.text(`Matrícula: ${selectedStudent.student_id || "-"}`, 14, 63);
-    doc.text(`Data: ${new Date(selectedStudent.created_at).toLocaleDateString("pt-BR")}`, 14, 71);
+    doc.text(`Matrícula: ${student.student_id || "-"}`, 14, 63);
+    doc.text(`Data: ${new Date(student.created_at).toLocaleDateString("pt-BR")}`, 14, 71);
 
-    // Overall score box
+    // Score box
     doc.setFillColor(240, 253, 244);
     doc.roundedRect(pageWidth - 70, 48, 56, 30, 3, 3, "F");
     doc.setFontSize(10);
@@ -272,21 +290,21 @@ const BoletimAcafe = () => {
     doc.text("NOTA GERAL", pageWidth - 42, 56, { align: "center" });
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.text(`${selectedStudent.percentage?.toFixed(1)}%`, pageWidth - 42, 72, { align: "center" });
+    doc.text(`${student.percentage?.toFixed(1)}%`, pageWidth - 42, 72, { align: "center" });
     doc.setFont("helvetica", "normal");
 
     // Ranking
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(11);
-    doc.text(`Ranking na turma: ${ranking}º de ${allCorrections.length} alunos`, 14, 85);
+    doc.text(`Ranking na turma: ${studentRanking}º de ${allCorrections.length} alunos`, 14, 85);
 
-    // Subject performance table
+    // Subject table
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
     doc.text("Desempenho por Disciplina", 14, 100);
     doc.setFont("helvetica", "normal");
 
-    const tableData = subjectStats.map(stat => [
+    const tableData = stats.map(stat => [
       stat.label,
       `${stat.correct}/${stat.total}`,
       `${stat.percentage}%`,
@@ -308,16 +326,17 @@ const BoletimAcafe = () => {
     doc.text("Questões a Revisar", 14, finalY);
     doc.setFont("helvetica", "normal");
 
-    const wrongData = wrongQuestions.slice(0, 15).map(q => [
+    const wrongData = wrong.slice(0, 15).map(q => [
       `Q${q.question}`,
       q.subject,
+      q.topic || "-",
       q.studentAnswer,
       q.correctAnswer,
     ]);
 
     (doc as any).autoTable({
       startY: finalY + 5,
-      head: [["Questão", "Disciplina", "Sua Resposta", "Gabarito"]],
+      head: [["Questão", "Disciplina", "Conteúdo", "Resposta", "Gabarito"]],
       body: wrongData,
       theme: "striped",
       headStyles: { fillColor: [220, 38, 38] },
@@ -329,10 +348,40 @@ const BoletimAcafe = () => {
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text("Fleming Medicina - Sistema de Correção de Provas", pageWidth / 2, pageHeight - 10, { align: "center" });
+  };
 
+  const generatePDF = () => {
+    if (!selectedStudent) return;
+
+    const doc = new jsPDF();
+    const studentRanking = calculateRankingFor(selectedCorrection);
+    buildPDFForStudent(doc, selectedStudent, studentAnswers, studentRanking, true);
     doc.save(`boletim_${selectedStudent.student_name.replace(/\s+/g, "_")}_ACAFE.pdf`);
-
     toast({ title: "PDF gerado com sucesso!" });
+  };
+
+  const generateAllPDFs = async () => {
+    if (allCorrections.length === 0) return;
+
+    setGeneratingAll(true);
+    try {
+      const doc = new jsPDF();
+      const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+
+      for (let i = 0; i < allCorrections.length; i++) {
+        const correction = allCorrections[i];
+        const answers = await loadAnswersForCorrection(correction.id);
+        const studentRanking = sorted.findIndex(c => c.id === correction.id) + 1;
+        buildPDFForStudent(doc, correction, answers, studentRanking, i === 0);
+      }
+
+      doc.save(`boletins_ACAFE_todos.pdf`);
+      toast({ title: `PDF gerado com ${allCorrections.length} boletins!` });
+    } catch {
+      toast({ title: "Erro ao gerar PDFs", variant: "destructive" });
+    } finally {
+      setGeneratingAll(false);
+    }
   };
 
   return (
@@ -346,12 +395,20 @@ const BoletimAcafe = () => {
             <FlemingLogo size="sm" />
             <h1 className="text-xl font-bold">Boletim de Desempenho ACAFE</h1>
           </div>
-          {selectedStudent && (
-            <Button onClick={generatePDF}>
-              <FileDown className="h-4 w-4 mr-2" />
-              Gerar PDF
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {allCorrections.length > 0 && (
+              <Button variant="outline" onClick={generateAllPDFs} disabled={generatingAll}>
+                <Download className="h-4 w-4 mr-2" />
+                {generatingAll ? "Gerando..." : `Gerar Todos (${allCorrections.length})`}
+              </Button>
+            )}
+            {selectedStudent && (
+              <Button onClick={generatePDF}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Gerar PDF
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -361,7 +418,7 @@ const BoletimAcafe = () => {
           <Card>
             <CardHeader>
               <CardTitle>Selecionar Aluno</CardTitle>
-              <CardDescription>Escolha o template e o aluno para gerar o boletim</CardDescription>
+              <CardDescription>Escolha o template e o aluno para gerar o boletim, ou gere todos de uma vez</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -525,6 +582,7 @@ const BoletimAcafe = () => {
                       <TableRow>
                         <TableHead>Questão</TableHead>
                         <TableHead>Disciplina</TableHead>
+                        <TableHead>Conteúdo</TableHead>
                         <TableHead>Sua Resposta</TableHead>
                         <TableHead>Gabarito</TableHead>
                       </TableRow>
@@ -534,6 +592,7 @@ const BoletimAcafe = () => {
                         <TableRow key={q.question}>
                           <TableCell className="font-medium">Q{q.question}</TableCell>
                           <TableCell>{q.subject || "-"}</TableCell>
+                          <TableCell className="text-muted-foreground">{q.topic || "-"}</TableCell>
                           <TableCell className="text-destructive font-medium">{q.studentAnswer}</TableCell>
                           <TableCell className="text-primary font-medium">{q.correctAnswer}</TableCell>
                         </TableRow>

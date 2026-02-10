@@ -6,11 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, FileText, Users } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 
+interface TemplateWithSubjects {
+  id: string;
+  name: string;
+  exam_type: string;
+  subjects: string[];
+}
+
 const Boletins = () => {
   const navigate = useNavigate();
+  const [boletimTypes, setBoletimTypes] = useState<TemplateWithSubjects[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
+    loadTemplatesWithSubjects();
   }, []);
 
   const checkAuth = async () => {
@@ -20,16 +30,48 @@ const Boletins = () => {
     }
   };
 
-  const boletimTypes = [
-    {
-      id: "acafe",
-      title: "Boletim ACAFE",
-      description: "Boletim de desempenho para provas no formato ACAFE",
-      icon: FileText,
-      path: "/boletins/acafe",
-      subjects: ["Português", "Matemática", "História", "Geografia", "Física", "Química", "Biologia", "Inglês"],
-    },
-  ];
+  const loadTemplatesWithSubjects = async () => {
+    setLoading(true);
+
+    const { data: templates, error: tError } = await supabase
+      .from("templates")
+      .select("id, name, exam_type")
+      .ilike("exam_type", "acafe")
+      .order("created_at", { ascending: false });
+
+    if (tError || !templates || templates.length === 0) {
+      setBoletimTypes([]);
+      setLoading(false);
+      return;
+    }
+
+    const templateIds = templates.map((t) => t.id);
+
+    const { data: questions } = await supabase
+      .from("template_questions")
+      .select("template_id, subject")
+      .in("template_id", templateIds)
+      .not("subject", "is", null);
+
+    const subjectsByTemplate: Record<string, Set<string>> = {};
+    (questions || []).forEach((q) => {
+      if (!q.subject) return;
+      if (!subjectsByTemplate[q.template_id]) {
+        subjectsByTemplate[q.template_id] = new Set();
+      }
+      subjectsByTemplate[q.template_id].add(q.subject);
+    });
+
+    const result: TemplateWithSubjects[] = templates.map((t) => ({
+      id: t.id,
+      name: t.name,
+      exam_type: t.exam_type,
+      subjects: Array.from(subjectsByTemplate[t.id] || []),
+    }));
+
+    setBoletimTypes(result);
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -52,60 +94,95 @@ const Boletins = () => {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {boletimTypes.map((boletim) => (
-              <Card
-                key={boletim.id}
-                className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50"
-                onClick={() => navigate(boletim.path)}
-              >
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground animate-pulse">Carregando...</div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2">
+              {boletimTypes.map((boletim) => (
+                <Card
+                  key={boletim.id}
+                  className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50"
+                  onClick={() => navigate("/boletins/acafe")}
+                >
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10">
+                        <FileText className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle>Boletim ACAFE</CardTitle>
+                        <CardDescription>
+                          Boletim de desempenho para provas no formato ACAFE
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {boletim.subjects.length > 0 ? (
+                        boletim.subjects.map((subject) => (
+                          <span
+                            key={subject}
+                            className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
+                          >
+                            {subject}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Nenhuma disciplina cadastrada nas questões
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {boletimTypes.length === 0 && (
+                <Card className="border-dashed opacity-60">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-muted">
+                        <Users className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-muted-foreground">Nenhum template ACAFE</CardTitle>
+                        <CardDescription>
+                          Crie um template com tipo "ACAFE" para começar
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Button size="sm" onClick={() => navigate("/templates")}>
+                      Criar Template
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="border-dashed opacity-60">
                 <CardHeader>
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <boletim.icon className="h-6 w-6 text-primary" />
+                    <div className="p-2 rounded-lg bg-muted">
+                      <Users className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div>
-                      <CardTitle>{boletim.title}</CardTitle>
-                      <CardDescription>{boletim.description}</CardDescription>
+                      <CardTitle className="text-muted-foreground">Em breve</CardTitle>
+                      <CardDescription>
+                        Outros formatos de boletim serão adicionados
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {boletim.subjects.map((subject) => (
-                      <span
-                        key={subject}
-                        className="px-2 py-1 text-xs rounded-full bg-secondary text-secondary-foreground"
-                      >
-                        {subject}
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    ENEM, UFSC, provas internas e mais...
+                  </p>
                 </CardContent>
               </Card>
-            ))}
-
-            <Card className="border-dashed opacity-60">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-muted">
-                    <Users className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-muted-foreground">Em breve</CardTitle>
-                    <CardDescription>
-                      Outros formatos de boletim serão adicionados
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  ENEM, UFSC, provas internas e mais...
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+            </div>
+          )}
         </div>
       </main>
     </div>

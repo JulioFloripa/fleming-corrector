@@ -125,20 +125,46 @@ const Correct = () => {
           
           if (!studentName) continue;
 
-          // Criar correção
-          const { data: correction, error: correctionError } = await supabase
+          // Verificar se já existe correção para este aluno + template
+          const { data: existingCorrections } = await supabase
             .from("corrections")
-            .insert({
-              user_id: user?.id,
-              template_id: selectedTemplate,
-              student_name: studentName,
-              student_id: studentId?.toString(),
-              status: "processing",
-            })
-            .select()
-            .single();
+            .select("id")
+            .eq("template_id", selectedTemplate)
+            .eq("student_name", studentName)
+            .eq("user_id", user?.id ?? "");
 
-          if (correctionError) continue;
+          let correctionId: string;
+
+          if (existingCorrections && existingCorrections.length > 0) {
+            // Atualizar correção existente
+            correctionId = existingCorrections[0].id;
+            await supabase
+              .from("corrections")
+              .update({ status: "processing", student_id: studentId?.toString() })
+              .eq("id", correctionId);
+
+            // Deletar respostas antigas
+            await supabase
+              .from("student_answers")
+              .delete()
+              .eq("correction_id", correctionId);
+          } else {
+            // Criar nova correção
+            const { data: correction, error: correctionError } = await supabase
+              .from("corrections")
+              .insert({
+                user_id: user?.id,
+                template_id: selectedTemplate,
+                student_name: studentName,
+                student_id: studentId?.toString(),
+                status: "processing",
+              })
+              .select()
+              .single();
+
+            if (correctionError) continue;
+            correctionId = correction.id;
+          }
 
           let totalScore = 0;
           let maxScore = 0;
@@ -155,7 +181,7 @@ const Correct = () => {
             maxScore += Number(question.points);
 
             await supabase.from("student_answers").insert({
-              correction_id: correction.id,
+              correction_id: correctionId,
               question_number: question.question_number,
               student_answer: studentAnswer?.toString(),
               correct_answer: question.correct_answer,
@@ -173,7 +199,7 @@ const Correct = () => {
               percentage: (totalScore / maxScore) * 100,
               status: "completed",
             })
-            .eq("id", correction.id);
+            .eq("id", correctionId);
         }
 
         toast({

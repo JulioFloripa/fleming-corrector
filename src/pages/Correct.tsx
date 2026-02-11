@@ -75,6 +75,9 @@ const Correct = () => {
     URL.revokeObjectURL(url);
   };
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_ROWS = 2000;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -85,6 +88,14 @@ const Correct = () => {
         toast({
           title: "Formato inválido",
           description: "Por favor, envie um arquivo CSV ou XLSX",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "O tamanho máximo permitido é 10MB",
           variant: "destructive",
         });
         return;
@@ -120,10 +131,11 @@ const Correct = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         for (const row of data) {
-          const studentName = row.Nome || row.nome || row.NOME;
-          const studentId = row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA;
+          const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
+          const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
           
-          if (!studentName) continue;
+          if (!studentName || studentName.length > 255) continue;
+          if (studentId && studentId.length > 100) continue;
 
           // Verificar se já existe correção para este aluno + template
           const { data: existingCorrections } = await supabase
@@ -173,8 +185,9 @@ const Correct = () => {
           for (const question of questions || []) {
             const qNum = question.question_number;
             const paddedNum = String(qNum).padStart(2, '0');
-            const studentAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
-            const isCorrect = studentAnswer?.toString().toUpperCase() === question.correct_answer.toUpperCase();
+            const rawAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
+            const studentAnswer = rawAnswer?.toString().trim().substring(0, 50) || null;
+            const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
             const pointsEarned = isCorrect ? Number(question.points) : 0;
 
             totalScore += pointsEarned;
@@ -183,7 +196,7 @@ const Correct = () => {
             await supabase.from("student_answers").insert({
               correction_id: correctionId,
               question_number: question.question_number,
-              student_answer: studentAnswer?.toString(),
+              student_answer: studentAnswer,
               correct_answer: question.correct_answer,
               is_correct: isCorrect,
               points_earned: pointsEarned,
@@ -244,6 +257,14 @@ const Correct = () => {
       };
 
       const parsedData = await parseFile();
+
+      if (!Array.isArray(parsedData) || parsedData.length === 0) {
+        throw new Error("Arquivo vazio ou formato inválido");
+      }
+      if (parsedData.length > MAX_ROWS) {
+        throw new Error(`Máximo de ${MAX_ROWS} registros por arquivo. O arquivo contém ${parsedData.length} registros.`);
+      }
+
       await processData(parsedData);
     } catch (error: any) {
       toast({

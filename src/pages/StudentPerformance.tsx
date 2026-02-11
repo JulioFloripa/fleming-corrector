@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
-import StudentSearch from "@/components/student/StudentSearch";
+import StudentSearchAdvanced from "@/components/student/StudentSearchAdvanced";
+import StudentListPaginated from "@/components/student/StudentListPaginated";
 import PerformanceOverview from "@/components/student/PerformanceOverview";
 import PerformanceChart from "@/components/student/PerformanceChart";
 import ExamsDetailTable from "@/components/student/ExamsDetailTable";
@@ -14,6 +15,7 @@ import {
   prepareChartData,
   prepareTableData,
 } from "@/lib/performance-stats";
+import { searchStudents, getExamTypes, SearchFilters, StudentSummary } from "@/lib/student-queries";
 
 interface StudentExam {
   id: string;
@@ -34,13 +36,30 @@ interface StudentExam {
 const StudentPerformance = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  
+  // Estado da lista de alunos
+  const [students, setStudents] = useState<StudentSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<SearchFilters>({});
+  const [examTypes, setExamTypes] = useState<string[]>([]);
+
+  // Estado do aluno selecionado
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [studentExams, setStudentExams] = useState<StudentExam[]>([]);
   const [studentName, setStudentName] = useState("");
 
   useEffect(() => {
     checkAuth();
+    loadExamTypes();
   }, []);
+
+  useEffect(() => {
+    loadStudents();
+  }, [currentPage, itemsPerPage, searchTerm, filters]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -49,8 +68,28 @@ const StudentPerformance = () => {
     }
   };
 
-  const handleSearch = async (studentId: string) => {
+  const loadExamTypes = async () => {
+    const types = await getExamTypes();
+    setExamTypes(types);
+  };
+
+  const loadStudents = async () => {
     setLoading(true);
+    const result = await searchStudents(searchTerm, currentPage, itemsPerPage, filters);
+    setStudents(result.students);
+    setTotalItems(result.total);
+    setLoading(false);
+  };
+
+  const handleSearch = (term: string, newFilters?: SearchFilters) => {
+    setSearchTerm(term);
+    setFilters(newFilters || {});
+    setCurrentPage(1); // Reset para primeira página ao buscar
+  };
+
+  const handleSelectStudent = async (studentId: string) => {
+    setLoading(true);
+    setSelectedStudentId(studentId);
 
     try {
       const { data, error } = await supabase
@@ -78,7 +117,7 @@ const StudentPerformance = () => {
       if (!data || data.length === 0) {
         toast({
           title: "Aluno não encontrado",
-          description: `Nenhuma prova encontrada para a matrícula ${studentId}`,
+          description: `Nenhuma prova encontrada para este aluno`,
           variant: "destructive",
         });
         setStudentExams([]);
@@ -98,10 +137,6 @@ const StudentPerformance = () => {
         } else {
           setStudentExams(validExams);
           setStudentName(validExams[0].student_name);
-          toast({
-            title: "Análise carregada!",
-            description: `${validExams.length} prova(s) encontrada(s)`,
-          });
         }
       }
     } catch (error) {
@@ -118,9 +153,16 @@ const StudentPerformance = () => {
     }
   };
 
+  const handleBackToList = () => {
+    setSelectedStudentId("");
+    setStudentExams([]);
+    setStudentName("");
+  };
+
   const stats = calculatePerformanceStats(studentExams);
   const chartData = prepareChartData(studentExams);
   const tableData = prepareTableData(studentExams);
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -136,10 +178,38 @@ const StudentPerformance = () => {
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto space-y-6">
-          <StudentSearch onSearch={handleSearch} loading={loading} />
-
-          {studentExams.length > 0 && (
+          {!selectedStudentId && (
             <>
+              <StudentSearchAdvanced
+                onSearch={handleSearch}
+                examTypes={examTypes}
+                loading={loading}
+              />
+              
+              <StudentListPaginated
+                students={students}
+                loading={loading}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                itemsPerPage={itemsPerPage}
+                totalItems={totalItems}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(items) => {
+                  setItemsPerPage(items);
+                  setCurrentPage(1);
+                }}
+                onSelectStudent={handleSelectStudent}
+              />
+            </>
+          )}
+
+          {selectedStudentId && studentExams.length > 0 && (
+            <>
+              <Button variant="outline" onClick={handleBackToList}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar para lista
+              </Button>
+
               <PerformanceOverview stats={stats} studentName={studentName} />
 
               <div className="grid gap-6 lg:grid-cols-2">

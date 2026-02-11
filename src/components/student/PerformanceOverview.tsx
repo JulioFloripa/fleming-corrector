@@ -29,9 +29,9 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
   };
 
   const getTrendColor = () => {
-    if (stats.trend > 5) return "text-green-600";
-    if (stats.trend < -5) return "text-red-600";
-    return "text-yellow-600";
+    if (stats.trend > 5) return "text-green-600 dark:text-green-400";
+    if (stats.trend < -5) return "text-red-600 dark:text-red-400";
+    return "text-yellow-600 dark:text-yellow-400";
   };
 
   return (
@@ -76,7 +76,7 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
               {stats.bestScore.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -91,7 +91,7 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
               {stats.worstScore.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">

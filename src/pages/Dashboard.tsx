@@ -101,14 +101,14 @@ const Dashboard = () => {
       description: "Edite respostas de alunos por matrícula",
       icon: Edit3,
       path: "/students/edit",
-      gradient: "from-blue-500 to-cyan-500",
+      gradient: "from-primary to-secondary",
     },
     {
       title: "Análise de Desempenho",
       description: "Compare resultados e evolução dos alunos",
       icon: TrendingUp,
       path: "/students/performance",
-      gradient: "from-purple-500 to-pink-500",
+      gradient: "from-accent to-primary",
     },
   ];
 

@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Award, Target, FileText, BarChart3 } from "lucide-react";
+import { Award, Target, TrendingUp, TrendingDown, BarChart3, Percent } from "lucide-react";
 
 interface PerformanceStats {
   totalExams: number;
-  averagePercentage: number;
+  averageScore: number;
   bestScore: number;
   worstScore: number;
   trend: number;
@@ -17,35 +17,35 @@ interface PerformanceOverviewProps {
 
 const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) => {
   const getTrendIcon = () => {
-    if (stats.trend > 5) return <TrendingUp className="h-5 w-5 text-green-500" />;
-    if (stats.trend < -5) return <TrendingDown className="h-5 w-5 text-red-500" />;
-    return <BarChart3 className="h-5 w-5 text-yellow-500" />;
+    if (stats.trend > 5) return <TrendingUp className="h-5 w-5 text-primary" />;
+    if (stats.trend < -5) return <TrendingDown className="h-5 w-5 text-destructive" />;
+    return <BarChart3 className="h-5 w-5 text-accent" />;
   };
 
-  const getTrendText = () => {
+  const getTrendLabel = () => {
     if (stats.trend > 5) return "Melhorando";
     if (stats.trend < -5) return "Piorando";
     return "Estável";
   };
 
   const getTrendColor = () => {
-    if (stats.trend > 5) return "text-green-600 dark:text-green-400";
-    if (stats.trend < -5) return "text-red-600 dark:text-red-400";
-    return "text-yellow-600 dark:text-yellow-400";
+    if (stats.trend > 5) return "text-primary";
+    if (stats.trend < -5) return "text-destructive";
+    return "text-accent";
   };
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold">{studentName}</h2>
-        <p className="text-muted-foreground">Análise de Desempenho Geral</p>
+        <p className="text-muted-foreground">Análise de desempenho geral</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total de Provas</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalExams}</div>
@@ -58,11 +58,11 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Média Geral</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+            <Percent className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.averagePercentage.toFixed(1)}%
+            <div className="text-2xl font-bold text-primary">
+              {stats.averageScore.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Desempenho médio
@@ -76,7 +76,7 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
             <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-2xl font-bold text-primary">
               {stats.bestScore.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -91,7 +91,7 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+            <div className="text-2xl font-bold text-destructive">
               {stats.worstScore.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
@@ -107,10 +107,10 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${getTrendColor()}`}>
-              {getTrendText()}
+              {getTrendLabel()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.trend > 0 ? "+" : ""}{stats.trend.toFixed(1)}% de variação
+              {stats.trend > 0 ? "+" : ""}{stats.trend.toFixed(1)}% em relação à média
             </p>
           </CardContent>
         </Card>
@@ -118,14 +118,14 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Taxa de Melhoria</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.improvementRate.toFixed(1)}%
+            <div className={`text-2xl font-bold ${stats.improvementRate >= 0 ? 'text-primary' : 'text-destructive'}`}>
+              {stats.improvementRate > 0 ? "+" : ""}{stats.improvementRate.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
-              Evolução ao longo do tempo
+              Primeira vs. Última prova
             </p>
           </CardContent>
         </Card>

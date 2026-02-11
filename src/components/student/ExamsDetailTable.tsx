@@ -1,16 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 
 interface ExamDetail {
-  id: string;
-  name: string;
-  type: string;
+  examName: string;
   date: string;
-  score: string;
   percentage: number;
-  trend?: number;
+  trend: number;
+  trendLabel: string;
 }
 
 interface ExamsDetailTableProps {
@@ -18,25 +15,24 @@ interface ExamsDetailTableProps {
 }
 
 const ExamsDetailTable = ({ exams }: ExamsDetailTableProps) => {
-  const getTrendIcon = (trend?: number) => {
-    if (!trend) return <Minus className="h-3 w-3 text-muted-foreground" />;
-    if (trend > 0) return <ArrowUp className="h-3 w-3 text-green-500" />;
-    if (trend < 0) return <ArrowDown className="h-3 w-3 text-red-500" />;
+  const getTrendIcon = (trend: number) => {
+    if (trend > 0) return <ArrowUp className="h-3 w-3 text-primary" />;
+    if (trend < 0) return <ArrowDown className="h-3 w-3 text-destructive" />;
     return <Minus className="h-3 w-3 text-muted-foreground" />;
   };
 
   const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 70) return "text-green-600 dark:text-green-400";
-    if (percentage >= 50) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (percentage >= 70) return "text-primary";
+    if (percentage >= 50) return "text-accent";
+    return "text-destructive";
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Detalhamento de Provas</CardTitle>
+        <CardTitle>Detalhamento por Prova</CardTitle>
         <CardDescription>
-          Lista completa com todas as provas realizadas e suas notas
+          Comparação entre provas consecutivas
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -45,44 +41,31 @@ const ExamsDetailTable = ({ exams }: ExamsDetailTableProps) => {
             <TableHeader>
               <TableRow>
                 <TableHead>Prova</TableHead>
-                <TableHead>Tipo</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-center">Nota</TableHead>
-                <TableHead className="text-center">%</TableHead>
                 <TableHead className="text-center">Tendência</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {exams.map((exam, index) => {
-                const prevPercentage = index > 0 ? exams[index - 1].percentage : null;
-                const trend = prevPercentage !== null ? exam.percentage - prevPercentage : undefined;
-
-                return (
-                  <TableRow key={exam.id}>
-                    <TableCell className="font-medium">{exam.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{exam.type}</Badge>
-                    </TableCell>
-                    <TableCell>{exam.date}</TableCell>
-                    <TableCell className="text-center font-mono">
-                      {exam.score}
-                    </TableCell>
-                    <TableCell className={`text-center font-bold ${getPerformanceColor(exam.percentage)}`}>
+              {exams.map((exam, index) => (
+                <TableRow key={index}>
+                  <TableCell className="font-medium">{exam.examName}</TableCell>
+                  <TableCell>{exam.date}</TableCell>
+                  <TableCell className="text-center">
+                    <span className={`font-bold ${getPerformanceColor(exam.percentage)}`}>
                       {exam.percentage.toFixed(1)}%
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        {getTrendIcon(trend)}
-                        {trend !== undefined && trend !== 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            {trend > 0 ? "+" : ""}{trend.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      {getTrendIcon(exam.trend)}
+                      <span className="text-sm text-muted-foreground">
+                        {exam.trendLabel}
+                      </span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>

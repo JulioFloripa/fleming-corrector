@@ -56,15 +56,15 @@ const StudentListPaginated = ({
   }
 
   const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 70) return "text-green-600 dark:text-green-400";
-    if (percentage >= 50) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (percentage >= 70) return "text-primary";
+    if (percentage >= 50) return "text-accent";
+    return "text-destructive";
   };
 
-  const getPerformanceBadge = (percentage: number) => {
-    if (percentage >= 70) return "bg-green-500/20 dark:bg-green-500/30";
-    if (percentage >= 50) return "bg-yellow-500/20 dark:bg-yellow-500/30";
-    return "bg-red-500/20 dark:bg-red-500/30";
+  const getPerformanceBadgeColor = (percentage: number) => {
+    if (percentage >= 70) return "bg-primary";
+    if (percentage >= 50) return "bg-accent";
+    return "bg-destructive";
   };
 
   return (
@@ -105,13 +105,9 @@ const StudentListPaginated = ({
                   <TableCell className="text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div
-                        className={`w-2 h-2 rounded-full ${
-                          student.avg_percentage >= 70
-                            ? "bg-green-500"
-                            : student.avg_percentage >= 50
-                            ? "bg-yellow-500"
-                            : "bg-red-500"
-                        }`}
+                        className={`w-2 h-2 rounded-full ${getPerformanceBadgeColor(
+                          student.avg_percentage
+                        )}`}
                       />
                       <span
                         className={`font-bold ${getPerformanceColor(

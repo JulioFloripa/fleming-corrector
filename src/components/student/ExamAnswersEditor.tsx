@@ -217,7 +217,7 @@ const ExamAnswersEditor = ({
                   </TableCell>
                   <TableCell className="text-center">
                     {answer.is_correct ? (
-                      <Badge className="bg-green-500/20 text-green-700 dark:bg-green-500/30 dark:text-green-300 border-green-500/50">
+                      <Badge className="bg-primary/20 text-primary border-primary/50">
                         <Check className="h-3 w-3 mr-1" />
                         Correta
                       </Badge>

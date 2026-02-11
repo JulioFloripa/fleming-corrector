@@ -66,49 +66,42 @@ const Dashboard = () => {
       description: "Comece uma nova correção de prova",
       icon: FileCheck,
       path: "/correct",
-      gradient: "from-primary to-accent",
     },
     {
       title: "Gerenciar Gabaritos",
       description: "Crie e gerencie gabaritos de provas",
       icon: FolderOpen,
       path: "/templates",
-      gradient: "from-accent to-secondary",
     },
     {
       title: "Histórico",
       description: "Veja todas as correções realizadas",
       icon: History,
       path: "/history",
-      gradient: "from-secondary to-primary",
     },
     {
       title: "Boletins",
       description: "Gere boletins de desempenho dos alunos",
       icon: BarChart3,
       path: "/boletins",
-      gradient: "from-primary/80 to-accent/80",
     },
     {
       title: "Disciplinas",
       description: "Cadastre disciplinas e conteúdos",
       icon: BookOpen,
       path: "/disciplines",
-      gradient: "from-accent/80 to-secondary/80",
     },
     {
       title: "Editar Respostas",
       description: "Edite respostas de alunos por matrícula",
       icon: Edit3,
       path: "/students/edit",
-      gradient: "from-primary to-secondary",
     },
     {
       title: "Análise de Desempenho",
       description: "Compare resultados e evolução dos alunos",
       icon: TrendingUp,
       path: "/students/performance",
-      gradient: "from-accent to-primary",
     },
   ];
 
@@ -149,8 +142,8 @@ const Dashboard = () => {
                 onClick={() => navigate(card.path)}
               >
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${card.gradient} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                    <Icon className="h-6 w-6 text-white" />
+                  <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Icon className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <CardTitle className="text-xl">{card.title}</CardTitle>
                   <CardDescription>{card.description}</CardDescription>

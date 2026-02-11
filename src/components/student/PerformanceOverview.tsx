@@ -1,14 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Award, Target, TrendingUp, TrendingDown, BarChart3, Percent } from "lucide-react";
 
-interface PerformanceStats {
-  totalExams: number;
-  averageScore: number;
-  bestScore: number;
-  worstScore: number;
-  trend: number;
-  improvementRate: number;
-}
+import { PerformanceStats } from "@/lib/performance-stats";
 
 interface PerformanceOverviewProps {
   stats: PerformanceStats;
@@ -62,7 +55,7 @@ const PerformanceOverview = ({ stats, studentName }: PerformanceOverviewProps) =
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">
-              {stats.averageScore.toFixed(1)}%
+              {stats.averagePercentage.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
               Desempenho médio

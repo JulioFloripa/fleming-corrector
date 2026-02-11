@@ -10,6 +10,8 @@ import {
   History, 
   BarChart3,
   BookOpen,
+  Edit3,
+  TrendingUp,
   LogOut 
 } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
@@ -93,6 +95,20 @@ const Dashboard = () => {
       icon: BookOpen,
       path: "/disciplines",
       gradient: "from-accent/80 to-secondary/80",
+    },
+    {
+      title: "Editar Respostas",
+      description: "Edite respostas de alunos por matrícula",
+      icon: Edit3,
+      path: "/students/edit",
+      gradient: "from-blue-500 to-cyan-500",
+    },
+    {
+      title: "Análise de Desempenho",
+      description: "Compare resultados e evolução dos alunos",
+      icon: TrendingUp,
+      path: "/students/performance",
+      gradient: "from-purple-500 to-pink-500",
     },
   ];
 

@@ -16,6 +16,7 @@ import BoletimAcafe from "./pages/BoletimAcafe";
 import Disciplines from "./pages/Disciplines";
 import StudentEdit from "./pages/StudentEdit";
 import StudentPerformance from "./pages/StudentPerformance";
+import Students from "./pages/Students";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/disciplines" element={<Disciplines />} />
           <Route path="/students/edit" element={<StudentEdit />} />
           <Route path="/students/performance" element={<StudentPerformance />} />
+          <Route path="/students" element={<Students />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
@@ -34,6 +44,10 @@ const Correct = () => {
   const [currentStudent, setCurrentStudent] = useState(0);
   const [totalStudents, setTotalStudents] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
+  // Ref para controlar cancelamento
+  const cancelProcessing = useRef(false);
 
   useEffect(() => {
     checkAuth();
@@ -126,7 +140,30 @@ const Correct = () => {
     setProgressPercent(0);
     setCurrentStudent(0);
     setTotalStudents(0);
+    cancelProcessing.current = false;
     navigate("/history");
+  };
+
+  const handleCancelRequest = () => {
+    if (!isCompleted) {
+      setShowCancelConfirm(true);
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    console.log('⚠️ Usuário solicitou cancelamento');
+    cancelProcessing.current = true;
+    setShowCancelConfirm(false);
+    setShowProgressDialog(false);
+    setProcessing(false);
+    setProgressPercent(0);
+    setCurrentStudent(0);
+    setTotalStudents(0);
+    toast({
+      title: "Processamento cancelado",
+      description: "A correção foi interrompida pelo usuário",
+      variant: "default",
+    });
   };
 
   const processCorrection = async () => {
@@ -143,6 +180,7 @@ const Correct = () => {
     setShowProgressDialog(true);
     setIsCompleted(false);
     setProgressPercent(0);
+    cancelProcessing.current = false; // Resetar flag de cancelamento
 
     try {
       // Carregar questões do template
@@ -165,6 +203,12 @@ const Correct = () => {
         let errorCount = 0;
         
         for (let index = 0; index < data.length; index++) {
+          // Verificar se o processamento foi cancelado
+          if (cancelProcessing.current) {
+            console.log('❌ Processamento cancelado pelo usuário');
+            break;
+          }
+          
           try {
             const row = data[index];
             console.log(`📝 Processando aluno ${index + 1}/${data.length}`);
@@ -461,8 +505,8 @@ const Correct = () => {
       </main>
 
       {/* Dialog de Progresso e Conclusão */}
-      <Dialog open={showProgressDialog} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <Dialog open={showProgressDialog} onOpenChange={(open) => !open && handleCancelRequest()}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => { e.preventDefault(); handleCancelRequest(); }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {isCompleted ? (
@@ -492,6 +536,11 @@ const Correct = () => {
                   Aguarde enquanto processamos as correções...
                 </p>
               </div>
+              <div className="flex justify-center pt-2">
+                <Button variant="outline" size="sm" onClick={handleCancelRequest}>
+                  Cancelar Processamento
+                </Button>
+              </div>
             </div>
           )}
 
@@ -516,6 +565,24 @@ const Correct = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* AlertDialog de Confirmação de Cancelamento */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar processamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja cancelar o processamento? As correções já realizadas serão mantidas, mas o restante não será processado.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar processando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCancel} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Sim, cancelar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

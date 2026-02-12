@@ -24,9 +24,19 @@ export const searchStudents = async (
   filters?: SearchFilters
 ): Promise<{ students: StudentSummary[]; total: number }> => {
   try {
+    console.log('🔍 Buscando alunos com:', { searchTerm, page, itemsPerPage, filters });
+    
     const offset = (page - 1) * itemsPerPage;
     
-    // Construir query base
+    // Primeiro, buscar todas as correções do usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      return { students: [], total: 0 };
+    }
+
+    // Construir query base - buscar todas as correções do usuário
     let query = supabase
       .from("corrections")
       .select(`
@@ -34,25 +44,24 @@ export const searchStudents = async (
         student_name,
         percentage,
         created_at,
+        template_id,
         templates!inner (
           name,
           exam_type
         )
-      `, { count: "exact" });
+      `, { count: "exact" })
+      .eq("user_id", user.id)
+      .eq("status", "completed");
 
     // Aplicar filtro de busca universal
     if (searchTerm.trim()) {
       const term = `%${searchTerm.trim()}%`;
       query = query.or(
-        `student_name.ilike.${term},student_id.ilike.${term},templates.name.ilike.${term}`
+        `student_name.ilike.${term},student_id.ilike.${term}`
       );
     }
 
     // Aplicar filtros adicionais
-    if (filters?.examType) {
-      query = query.eq("templates.exam_type", filters.examType);
-    }
-
     if (filters?.dateFrom) {
       query = query.gte("created_at", filters.dateFrom);
     }
@@ -64,7 +73,20 @@ export const searchStudents = async (
     // Executar query
     const { data, error, count } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro na query:', error);
+      throw error;
+    }
+
+    console.log('📊 Correções encontradas:', data?.length || 0);
+
+    // Filtrar por tipo de prova se necessário (após busca, pois templates é relacionamento)
+    let filteredData = data || [];
+    if (filters?.examType) {
+      filteredData = filteredData.filter(
+        (correction: any) => correction.templates?.exam_type === filters.examType
+      );
+    }
 
     // Agrupar por aluno e calcular estatísticas
     const studentMap = new Map<string, {
@@ -73,8 +95,9 @@ export const searchStudents = async (
       exams: { percentage: number; date: string }[];
     }>();
 
-    (data || []).forEach((correction: any) => {
-      const key = correction.student_id || correction.student_name;
+    filteredData.forEach((correction: any) => {
+      // Usar student_name como chave principal (mais confiável que student_id que pode estar vazio)
+      const key = correction.student_name;
       
       if (!studentMap.has(key)) {
         studentMap.set(key, {
@@ -89,6 +112,8 @@ export const searchStudents = async (
         date: correction.created_at,
       });
     });
+
+    console.log('👥 Alunos únicos encontrados:', studentMap.size);
 
     // Converter para array e calcular estatísticas
     const students: StudentSummary[] = Array.from(studentMap.values()).map((student) => {
@@ -115,12 +140,14 @@ export const searchStudents = async (
     // Aplicar paginação
     const paginatedStudents = students.slice(offset, offset + itemsPerPage);
 
+    console.log('✅ Retornando', paginatedStudents.length, 'alunos de', students.length, 'total');
+
     return {
       students: paginatedStudents,
       total: students.length,
     };
   } catch (error) {
-    console.error("Erro ao buscar alunos:", error);
+    console.error("❌ Erro ao buscar alunos:", error);
     return { students: [], total: 0 };
   }
 };
@@ -130,9 +157,14 @@ export const searchStudents = async (
  */
 export const getExamTypes = async (): Promise<string[]> => {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) return [];
+
     const { data, error } = await supabase
       .from("templates")
       .select("exam_type")
+      .eq("user_id", user.id)
       .order("exam_type");
 
     if (error) throw error;
@@ -150,10 +182,19 @@ export const getExamTypes = async (): Promise<string[]> => {
 };
 
 /**
- * Busca provas de um aluno específico
+ * Busca provas de um aluno específico por nome
  */
-export const getStudentExams = async (studentId: string) => {
+export const getStudentExams = async (studentName: string) => {
   try {
+    console.log('🔍 Buscando provas do aluno:', studentName);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user) {
+      console.error('❌ Usuário não autenticado');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from("corrections")
       .select(`
@@ -164,6 +205,7 @@ export const getStudentExams = async (studentId: string) => {
         max_score,
         percentage,
         created_at,
+        template_id,
         templates (
           id,
           name,
@@ -171,14 +213,21 @@ export const getStudentExams = async (studentId: string) => {
           total_questions
         )
       `)
-      .eq("student_id", studentId)
+      .eq("user_id", user.id)
+      .eq("student_name", studentName)
+      .eq("status", "completed")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar provas:', error);
+      throw error;
+    }
+
+    console.log('📊 Provas encontradas:', data?.length || 0);
 
     return data || [];
   } catch (error) {
-    console.error("Erro ao buscar provas do aluno:", error);
+    console.error("❌ Erro ao buscar provas do aluno:", error);
     return [];
   }
 };

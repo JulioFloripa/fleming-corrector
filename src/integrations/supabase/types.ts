@@ -182,6 +182,39 @@ export type Database = {
           },
         ]
       }
+      students: {
+        Row: {
+          campus: string | null
+          created_at: string
+          foreign_language: string | null
+          id: string
+          name: string
+          student_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campus?: string | null
+          created_at?: string
+          foreign_language?: string | null
+          id?: string
+          name: string
+          student_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campus?: string | null
+          created_at?: string
+          foreign_language?: string | null
+          id?: string
+          name?: string
+          student_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       template_questions: {
         Row: {
           correct_answer: string

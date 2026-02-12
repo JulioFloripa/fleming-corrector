@@ -12,6 +12,7 @@ import {
   BookOpen,
   Edit3,
   TrendingUp,
+  Users,
   LogOut 
 } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
@@ -109,6 +110,13 @@ const Dashboard = () => {
       icon: TrendingUp,
       path: "/students/performance",
       gradient: "from-accent to-primary",
+    },
+    {
+      title: "Cadastro de Alunos",
+      description: "Gerencie nome, matrícula, sede e língua",
+      icon: Users,
+      path: "/students",
+      gradient: "from-secondary to-accent",
     },
   ];
 

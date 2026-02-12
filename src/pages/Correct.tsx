@@ -4,10 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Upload, FileText } from "lucide-react";
+import { ArrowLeft, Upload, FileText, CheckCircle2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
 
@@ -18,6 +27,13 @@ const Correct = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
+  
+  // Estados do dialog de progresso
+  const [showProgressDialog, setShowProgressDialog] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [currentStudent, setCurrentStudent] = useState(0);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -104,6 +120,15 @@ const Correct = () => {
     }
   };
 
+  const handleCloseDialog = () => {
+    setShowProgressDialog(false);
+    setIsCompleted(false);
+    setProgressPercent(0);
+    setCurrentStudent(0);
+    setTotalStudents(0);
+    navigate("/history");
+  };
+
   const processCorrection = async () => {
     if (!selectedTemplate || !file) {
       toast({
@@ -115,6 +140,9 @@ const Correct = () => {
     }
 
     setProcessing(true);
+    setShowProgressDialog(true);
+    setIsCompleted(false);
+    setProgressPercent(0);
 
     try {
       // Carregar questões do template
@@ -129,8 +157,13 @@ const Correct = () => {
       // Função para processar dados
       const processData = async (data: any[]) => {
         const { data: { user } } = await supabase.auth.getUser();
+        setTotalStudents(data.length);
         
-        for (const row of data) {
+        for (let index = 0; index < data.length; index++) {
+          const row = data[index];
+          setCurrentStudent(index + 1);
+          setProgressPercent(Math.round(((index + 1) / data.length) * 100));
+          
           const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
           const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
           
@@ -215,12 +248,8 @@ const Correct = () => {
             .eq("id", correctionId);
         }
 
-        toast({
-          title: "Correção concluída!",
-          description: `${data.length} provas corrigidas com sucesso`,
-        });
-
-        navigate("/history");
+        // Marcar como concluído
+        setIsCompleted(true);
       };
 
       // Detectar tipo de arquivo e processar
@@ -267,6 +296,7 @@ const Correct = () => {
 
       await processData(parsedData);
     } catch (error: any) {
+      setShowProgressDialog(false);
       toast({
         title: "Erro ao processar",
         description: error.message,
@@ -366,6 +396,63 @@ const Correct = () => {
           </CardContent>
         </Card>
       </main>
+
+      {/* Dialog de Progresso e Conclusão */}
+      <Dialog open={showProgressDialog} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {isCompleted ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-primary" />
+                  Processo Concluído
+                </>
+              ) : (
+                "Processando Correções"
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {isCompleted ? (
+                `${totalStudents} ${totalStudents === 1 ? 'estudante foi encontrado' : 'estudantes foram encontrados'} e corrigido${totalStudents === 1 ? '' : 's'} com sucesso!`
+              ) : (
+                `Processando aluno ${currentStudent} de ${totalStudents}...`
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!isCompleted && (
+            <div className="space-y-4 py-4">
+              <Progress value={progressPercent} className="w-full" />
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{progressPercent}%</p>
+                <p className="text-sm text-muted-foreground">
+                  Aguarde enquanto processamos as correções...
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isCompleted && (
+            <div className="py-6 text-center">
+              <CheckCircle2 className="h-16 w-16 text-primary mx-auto mb-4" />
+              <p className="text-lg font-medium mb-2">
+                Todas as provas foram corrigidas!
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Você pode visualizar os resultados no histórico de correções.
+              </p>
+            </div>
+          )}
+
+          {isCompleted && (
+            <DialogFooter>
+              <Button onClick={handleCloseDialog} className="w-full">
+                OK
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

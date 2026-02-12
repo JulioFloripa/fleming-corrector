@@ -159,10 +159,16 @@ const Correct = () => {
         const { data: { user } } = await supabase.auth.getUser();
         setTotalStudents(data.length);
         
+        const UPDATE_INTERVAL = 15; // Atualizar progresso a cada 15 alunos
+        
         for (let index = 0; index < data.length; index++) {
           const row = data[index];
-          setCurrentStudent(index + 1);
-          setProgressPercent(Math.round(((index + 1) / data.length) * 100));
+          
+          // Atualizar progresso apenas a cada UPDATE_INTERVAL alunos ou no último
+          if (index % UPDATE_INTERVAL === 0 || index === data.length - 1) {
+            setCurrentStudent(index + 1);
+            setProgressPercent(Math.round(((index + 1) / data.length) * 100));
+          }
           
           const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
           const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();

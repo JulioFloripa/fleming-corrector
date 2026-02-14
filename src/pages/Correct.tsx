@@ -363,6 +363,20 @@ const Correct = () => {
       // Detectar tipo de arquivo e processar
       const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
       
+      // Helper para converter valores ExcelJS (rich text, hyperlinks, etc.) em string
+      const cellToString = (val: any): string => {
+        if (val == null) return "";
+        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
+        if (typeof val === "object") {
+          if (val.richText && Array.isArray(val.richText)) {
+            return val.richText.map((rt: any) => rt.text || "").join("");
+          }
+          if (val.text != null) return String(val.text);
+          if (val.result != null) return String(val.result);
+        }
+        return String(val);
+      };
+
       const parseFile = async (): Promise<any[]> => {
         if (isXLSX) {
           const buffer = await file.arrayBuffer();
@@ -370,13 +384,13 @@ const Correct = () => {
           await wb.xlsx.load(buffer);
           const sheet = wb.worksheets[0];
           if (!sheet || sheet.rowCount < 2) return [];
-          const headers = (sheet.getRow(1).values as any[]).slice(1); // ExcelJS is 1-indexed
+          const headers = (sheet.getRow(1).values as any[]).slice(1).map(cellToString);
           const rows: any[] = [];
           sheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return;
             const obj: any = {};
             (row.values as any[]).slice(1).forEach((val, i) => {
-              obj[headers[i]] = val;
+              obj[headers[i]] = cellToString(val);
             });
             rows.push(obj);
           });

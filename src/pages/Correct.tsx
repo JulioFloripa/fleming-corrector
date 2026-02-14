@@ -222,6 +222,8 @@ const Correct = () => {
           
             const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
             const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
+            const studentCampus = (row.Sede || row.sede || row.SEDE || "").toString().trim() || null;
+            const studentLanguage = (row["Idioma escolhido"] || row["idioma escolhido"] || row["Lingua estrangeira"] || row["lingua estrangeira"] || "").toString().trim() || null;
             
             if (!studentName || studentName.length > 255) {
               console.warn(`⚠️ Aluno ${index + 1}: nome inválido, pulando`);
@@ -233,6 +235,50 @@ const Correct = () => {
             }
             
             console.log(`👤 Processando: ${studentName} (ID: ${studentId || 'sem ID'})`);
+
+            // Registrar/atualizar aluno na tabela students
+            if (studentId) {
+              const { data: existingStudent } = await supabase
+                .from("students")
+                .select("id")
+                .eq("student_id", studentId)
+                .eq("user_id", user?.id ?? "")
+                .maybeSingle();
+
+              if (existingStudent) {
+                await supabase.from("students").update({
+                  name: studentName,
+                  campus: studentCampus,
+                  foreign_language: studentLanguage,
+                }).eq("id", existingStudent.id);
+              } else {
+                await supabase.from("students").insert({
+                  user_id: user?.id ?? "",
+                  name: studentName,
+                  student_id: studentId,
+                  campus: studentCampus,
+                  foreign_language: studentLanguage,
+                });
+              }
+            } else {
+              // Sem matrícula: busca por nome
+              const { data: existingStudent } = await supabase
+                .from("students")
+                .select("id")
+                .eq("name", studentName)
+                .eq("user_id", user?.id ?? "")
+                .is("student_id", null)
+                .maybeSingle();
+
+              if (!existingStudent) {
+                await supabase.from("students").insert({
+                  user_id: user?.id ?? "",
+                  name: studentName,
+                  campus: studentCampus,
+                  foreign_language: studentLanguage,
+                });
+              }
+            }
 
             // Verificar se já existe correção para este aluno + template
             console.log(`🔍 Verificando correção existente para ${studentName}`);

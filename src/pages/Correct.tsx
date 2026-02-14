@@ -196,211 +196,166 @@ const Correct = () => {
       const processData = async (data: any[]) => {
         console.log('🚀 Iniciando processamento de', data.length, 'alunos');
         const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id ?? "";
         setTotalStudents(data.length);
         
-        const UPDATE_INTERVAL = 5; // Atualizar progresso a cada 5 alunos (reduzido para melhor feedback)
+        // Pré-carregar correções existentes para este template de uma só vez
+        const { data: allExistingCorrections } = await supabase
+          .from("corrections")
+          .select("id, student_name")
+          .eq("template_id", selectedTemplate)
+          .eq("user_id", userId);
+        
+        const correctionMap = new Map<string, string>();
+        (allExistingCorrections || []).forEach(c => correctionMap.set(c.student_name, c.id));
+
+        // Pré-carregar alunos existentes
+        const { data: allExistingStudents } = await supabase
+          .from("students")
+          .select("id, student_id, name")
+          .eq("user_id", userId);
+        
+        const studentByIdMap = new Map<string, string>();
+        const studentByNameMap = new Map<string, string>();
+        (allExistingStudents || []).forEach(s => {
+          if (s.student_id) studentByIdMap.set(s.student_id, s.id);
+          else studentByNameMap.set(s.name, s.id);
+        });
+
+        const BATCH_SIZE = 10;
         let processedCount = 0;
         let errorCount = 0;
         
-        for (let index = 0; index < data.length; index++) {
-          // Verificar se o processamento foi cancelado
+        for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
           if (cancelProcessing.current) {
             console.log('❌ Processamento cancelado pelo usuário');
             break;
           }
-          
-          try {
-            const row = data[index];
-            console.log(`📝 Processando aluno ${index + 1}/${data.length}`);
-            
-            // Atualizar progresso a cada UPDATE_INTERVAL alunos ou no último
-            if (index % UPDATE_INTERVAL === 0 || index === data.length - 1) {
-              setCurrentStudent(index + 1);
-              setProgressPercent(Math.round(((index + 1) / data.length) * 100));
-              console.log(`📊 Progresso: ${Math.round(((index + 1) / data.length) * 100)}%`);
-            }
-          
-            const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
-            const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
-            const studentCampus = (row.Sede || row.sede || row.SEDE || "").toString().trim() || null;
-            const studentLanguage = (row["Idioma escolhido"] || row["idioma escolhido"] || row["Lingua estrangeira"] || row["lingua estrangeira"] || "").toString().trim() || null;
-            
-            if (!studentName || studentName.length > 255) {
-              console.warn(`⚠️ Aluno ${index + 1}: nome inválido, pulando`);
-              continue;
-            }
-            if (studentId && studentId.length > 100) {
-              console.warn(`⚠️ Aluno ${index + 1}: ID muito longo, pulando`);
-              continue;
-            }
-            
-            console.log(`👤 Processando: ${studentName} (ID: ${studentId || 'sem ID'})`);
 
-            // Registrar/atualizar aluno na tabela students
-            if (studentId) {
-              const { data: existingStudent } = await supabase
-                .from("students")
-                .select("id")
-                .eq("student_id", studentId)
-                .eq("user_id", user?.id ?? "")
-                .maybeSingle();
+          const batch = data.slice(batchStart, Math.min(batchStart + BATCH_SIZE, data.length));
+          
+          const batchPromises = batch.map(async (row, batchIdx) => {
+            const index = batchStart + batchIdx;
+            try {
+              const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
+              const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
+              const studentCampus = (row.Sede || row.sede || row.SEDE || "").toString().trim() || null;
+              const studentLanguage = (row["Idioma escolhido"] || row["idioma escolhido"] || row["Lingua estrangeira"] || row["lingua estrangeira"] || "").toString().trim() || null;
+              
+              if (!studentName || studentName.length > 255) return;
+              if (studentId && studentId.length > 100) return;
 
-              if (existingStudent) {
-                await supabase.from("students").update({
-                  name: studentName,
-                  campus: studentCampus,
-                  foreign_language: studentLanguage,
-                }).eq("id", existingStudent.id);
+              // Registrar/atualizar aluno na tabela students
+              if (studentId) {
+                if (studentByIdMap.has(studentId)) {
+                  await supabase.from("students").update({
+                    name: studentName, campus: studentCampus, foreign_language: studentLanguage,
+                  }).eq("id", studentByIdMap.get(studentId)!);
+                } else {
+                  await supabase.from("students").insert({
+                    user_id: userId, name: studentName, student_id: studentId,
+                    campus: studentCampus, foreign_language: studentLanguage,
+                  });
+                  studentByIdMap.set(studentId, "inserted");
+                }
+              } else if (!studentByNameMap.has(studentName)) {
+                await supabase.from("students").insert({
+                  user_id: userId, name: studentName,
+                  campus: studentCampus, foreign_language: studentLanguage,
+                });
+                studentByNameMap.set(studentName, "inserted");
+              }
+
+              // Correção: verificar existente via mapa pré-carregado
+              let correctionId: string;
+              const existingCorrectionId = correctionMap.get(studentName);
+
+              if (existingCorrectionId) {
+                correctionId = existingCorrectionId;
+                // Atualizar e deletar respostas antigas em paralelo
+                await Promise.all([
+                  supabase.from("corrections")
+                    .update({ status: "processing", student_id: studentId?.toString() })
+                    .eq("id", correctionId),
+                  supabase.from("student_answers")
+                    .delete()
+                    .eq("correction_id", correctionId),
+                ]);
               } else {
-                await supabase.from("students").insert({
-                  user_id: user?.id ?? "",
-                  name: studentName,
-                  student_id: studentId,
-                  campus: studentCampus,
-                  foreign_language: studentLanguage,
+                const { data: correction, error: correctionError } = await supabase
+                  .from("corrections")
+                  .insert({
+                    user_id: userId,
+                    template_id: selectedTemplate,
+                    student_name: studentName,
+                    student_id: studentId?.toString(),
+                    status: "processing",
+                  })
+                  .select("id")
+                  .single();
+
+                if (correctionError) throw correctionError;
+                correctionId = correction.id;
+                correctionMap.set(studentName, correctionId);
+              }
+
+              // Processar todas as respostas e inserir em lote
+              let totalScore = 0;
+              let maxScore = 0;
+              const answersToInsert: any[] = [];
+
+              for (const question of questions || []) {
+                const qNum = question.question_number;
+                const paddedNum = String(qNum).padStart(2, '0');
+                const rawAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
+                const studentAnswer = rawAnswer?.toString().trim().substring(0, 50) || null;
+                const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
+                const pointsEarned = isCorrect ? Number(question.points) : 0;
+
+                totalScore += pointsEarned;
+                maxScore += Number(question.points);
+
+                answersToInsert.push({
+                  correction_id: correctionId,
+                  question_number: question.question_number,
+                  student_answer: studentAnswer,
+                  correct_answer: question.correct_answer,
+                  is_correct: isCorrect,
+                  points_earned: pointsEarned,
                 });
               }
-            } else {
-              // Sem matrícula: busca por nome
-              const { data: existingStudent } = await supabase
-                .from("students")
-                .select("id")
-                .eq("name", studentName)
-                .eq("user_id", user?.id ?? "")
-                .is("student_id", null)
-                .maybeSingle();
 
-              if (!existingStudent) {
-                await supabase.from("students").insert({
-                  user_id: user?.id ?? "",
-                  name: studentName,
-                  campus: studentCampus,
-                  foreign_language: studentLanguage,
-                });
-              }
-            }
+              // Inserir todas as respostas de uma vez
+              const { error: answerError } = await supabase.from("student_answers").insert(answersToInsert);
+              if (answerError) throw answerError;
 
-            // Verificar se já existe correção para este aluno + template
-            console.log(`🔍 Verificando correção existente para ${studentName}`);
-            const { data: existingCorrections, error: checkError } = await supabase
-              .from("corrections")
-              .select("id")
-              .eq("template_id", selectedTemplate)
-              .eq("student_name", studentName)
-              .eq("user_id", user?.id ?? "");
-
-            if (checkError) {
-              console.error(`❌ Erro ao verificar correção existente:`, checkError);
-              throw checkError;
-            }
-
-            let correctionId: string;
-
-            if (existingCorrections && existingCorrections.length > 0) {
-              // Atualizar correção existente
-              console.log(`♻️ Atualizando correção existente`);
-              correctionId = existingCorrections[0].id;
-              const { error: updateError } = await supabase
+              // Atualizar correção com pontuação
+              const { error: finalError } = await supabase
                 .from("corrections")
-                .update({ status: "processing", student_id: studentId?.toString() })
+                .update({
+                  total_score: totalScore,
+                  max_score: maxScore,
+                  percentage: maxScore > 0 ? (totalScore / maxScore) * 100 : 0,
+                  status: "completed",
+                })
                 .eq("id", correctionId);
 
-              if (updateError) {
-                console.error(`❌ Erro ao atualizar correção:`, updateError);
-                throw updateError;
-              }
-
-              // Deletar respostas antigas
-              console.log(`🗑️ Deletando respostas antigas`);
-              const { error: deleteError } = await supabase
-                .from("student_answers")
-                .delete()
-                .eq("correction_id", correctionId);
-
-              if (deleteError) {
-                console.error(`❌ Erro ao deletar respostas antigas:`, deleteError);
-                throw deleteError;
-              }
-            } else {
-              // Criar nova correção
-              console.log(`✨ Criando nova correção`);
-              const { data: correction, error: correctionError } = await supabase
-                .from("corrections")
-                .insert({
-                  user_id: user?.id,
-                  template_id: selectedTemplate,
-                  student_name: studentName,
-                  student_id: studentId?.toString(),
-                  status: "processing",
-                })
-                .select()
-                .single();
-
-              if (correctionError) {
-                console.error(`❌ Erro ao criar correção:`, correctionError);
-                throw correctionError;
-              }
-              correctionId = correction.id;
+              if (finalError) throw finalError;
+              processedCount++;
+            } catch (error: any) {
+              errorCount++;
+              console.error(`❌ Erro ao processar aluno ${index + 1}:`, error);
             }
+          });
 
-            let totalScore = 0;
-            let maxScore = 0;
-
-            // Processar respostas
-            console.log(`📋 Processando ${questions?.length || 0} questões`);
-            for (const question of questions || []) {
-              const qNum = question.question_number;
-              const paddedNum = String(qNum).padStart(2, '0');
-              const rawAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
-              const studentAnswer = rawAnswer?.toString().trim().substring(0, 50) || null;
-              const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
-              const pointsEarned = isCorrect ? Number(question.points) : 0;
-
-              totalScore += pointsEarned;
-              maxScore += Number(question.points);
-
-              const { error: answerError } = await supabase.from("student_answers").insert({
-                correction_id: correctionId,
-                question_number: question.question_number,
-                student_answer: studentAnswer,
-                correct_answer: question.correct_answer,
-                is_correct: isCorrect,
-                points_earned: pointsEarned,
-              });
-
-              if (answerError) {
-                console.error(`❌ Erro ao inserir resposta da questão ${qNum}:`, answerError);
-                throw answerError;
-              }
-            }
-
-            // Atualizar correção com pontuação
-            console.log(`💯 Finalizando: ${totalScore}/${maxScore} pontos (${((totalScore / maxScore) * 100).toFixed(1)}%)`);
-            const { error: finalError } = await supabase
-              .from("corrections")
-              .update({
-                total_score: totalScore,
-                max_score: maxScore,
-                percentage: (totalScore / maxScore) * 100,
-                status: "completed",
-              })
-              .eq("id", correctionId);
-
-            if (finalError) {
-              console.error(`❌ Erro ao finalizar correção:`, finalError);
-              throw finalError;
-            }
-
-            processedCount++;
-            console.log(`✅ Aluno ${index + 1} processado com sucesso`);
-          } catch (error: any) {
-            errorCount++;
-            console.error(`❌ Erro ao processar aluno ${index + 1}:`, error);
-            // Continua processando os próximos alunos mesmo com erro
-          }
+          await Promise.all(batchPromises);
+          
+          // Atualizar progresso após cada lote
+          const processed = Math.min(batchStart + BATCH_SIZE, data.length);
+          setCurrentStudent(processed);
+          setProgressPercent(Math.round((processed / data.length) * 100));
         }
 
-        // Marcar como concluído
         console.log(`🎉 Processamento concluído! ${processedCount} alunos processados, ${errorCount} erros`);
         setIsCompleted(true);
       };

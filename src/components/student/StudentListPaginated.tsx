@@ -127,7 +127,7 @@ const StudentListPaginated = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => onSelectStudent(student.student_id)}
+                      onClick={() => onSelectStudent(student.student_name)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       Ver

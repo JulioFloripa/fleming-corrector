@@ -92,11 +92,11 @@ const StudentEdit = () => {
     setCurrentPage(1); // Reset para primeira página ao buscar
   };
 
-  const handleSelectStudent = async (studentId: string) => {
+  const handleSelectStudent = async (studentName: string) => {
     setLoading(true);
-    setSelectedStudentId(studentId);
+    setSelectedStudentId(studentName);
     
-    const exams = await getStudentExams(studentId);
+    const exams = await getStudentExams(studentName);
     setStudentExams(exams as StudentExam[]);
     setLoading(false);
 
@@ -172,7 +172,7 @@ const StudentEdit = () => {
   const handleSaveSuccess = async () => {
     // Recarregar lista de provas para atualizar notas
     if (selectedStudentId) {
-      const exams = await getStudentExams(selectedStudentId);
+      const exams = await getStudentExams(selectedStudentId); // selectedStudentId agora é student_name
       setStudentExams(exams as StudentExam[]);
     }
   };

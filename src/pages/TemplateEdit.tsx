@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { recalculateByTemplate } from "@/lib/recalculate";
+import { EXAM_PRESETS, generatePresetQuestions } from "@/lib/exam-presets";
 
 interface TemplateQuestion {
   id: string;
@@ -89,19 +90,28 @@ const TemplateEdit = () => {
     } else if (questionsData && questionsData.length > 0) {
       setQuestions(questionsData);
     } else {
-      // Criar questões vazias
-      const emptyQuestions: TemplateQuestion[] = Array.from(
-        { length: templateData.total_questions },
-        (_, i) => ({
+      // Use preset if available, otherwise create empty questions
+      const preset = EXAM_PRESETS[templateData.exam_type];
+      if (preset) {
+        const presetQuestions = generatePresetQuestions(preset).map((q, i) => ({
+          ...q,
           id: `temp-${i}`,
-          question_number: i + 1,
-          correct_answer: "A",
-          points: 1,
-          subject: null,
-          topic: null,
-        })
-      );
-      setQuestions(emptyQuestions);
+        }));
+        setQuestions(presetQuestions);
+      } else {
+        const emptyQuestions: TemplateQuestion[] = Array.from(
+          { length: templateData.total_questions },
+          (_, i) => ({
+            id: `temp-${i}`,
+            question_number: i + 1,
+            correct_answer: "A",
+            points: 1,
+            subject: null,
+            topic: null,
+          })
+        );
+        setQuestions(emptyQuestions);
+      }
     }
 
     setLoading(false);
@@ -240,11 +250,9 @@ const TemplateEdit = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="A">A</SelectItem>
-                          <SelectItem value="B">B</SelectItem>
-                          <SelectItem value="C">C</SelectItem>
-                          <SelectItem value="D">D</SelectItem>
-                          <SelectItem value="E">E</SelectItem>
+                          {(EXAM_PRESETS[template?.exam_type]?.alternatives || ["A", "B", "C", "D", "E"]).map((alt) => (
+                            <SelectItem key={alt} value={alt}>{alt}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </td>

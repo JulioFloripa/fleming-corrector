@@ -14,8 +14,8 @@ export const EXAM_PRESETS: Record<string, ExamPreset> = {
     totalQuestions: 63,
     alternatives: ["A", "B", "C", "D"],
     subjects: [
-      { subject: "Língua Portuguesa e Literatura", count: 14 },
-      { subject: "Língua Estrangeira", count: 7 },
+      { subject: "Português", count: 14 },
+      { subject: "Inglês", count: 7 },
       { subject: "Matemática", count: 7 },
       { subject: "Física", count: 7 },
       { subject: "Química", count: 7 },

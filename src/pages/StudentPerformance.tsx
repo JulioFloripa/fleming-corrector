@@ -87,9 +87,9 @@ const StudentPerformance = () => {
     setCurrentPage(1); // Reset para primeira página ao buscar
   };
 
-  const handleSelectStudent = async (studentId: string) => {
+  const handleSelectStudent = async (studentName: string) => {
     setLoading(true);
-    setSelectedStudentId(studentId);
+    setSelectedStudentId(studentName);
 
     try {
       const { data, error } = await supabase
@@ -109,7 +109,8 @@ const StudentPerformance = () => {
             total_questions
           )
         `)
-        .eq("student_id", studentId)
+        .eq("student_name", studentName)
+        .eq("status", "completed")
         .order("created_at", { ascending: true });
 
       if (error) throw error;

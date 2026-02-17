@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, ArrowLeft } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 import { Textarea } from "@/components/ui/textarea";
+import { EXAM_PRESETS, generatePresetQuestions } from "@/lib/exam-presets";
 
 interface Template {
   id: string;
@@ -28,6 +29,8 @@ const Templates = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [selectedExamType, setSelectedExamType] = useState("");
+  const [totalQuestions, setTotalQuestions] = useState("");
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -68,15 +71,18 @@ const Templates = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
+    const examType = selectedExamType;
+    const numQuestions = parseInt(totalQuestions);
+
     const templateData = {
       user_id: session.user.id,
       name: formData.get("name") as string,
       description: formData.get("description") as string,
-      total_questions: parseInt(formData.get("total_questions") as string),
-      exam_type: formData.get("exam_type") as string,
+      total_questions: numQuestions,
+      exam_type: examType,
     };
 
-    const { error } = await supabase.from("templates").insert([templateData]);
+    const { data: inserted, error } = await supabase.from("templates").insert([templateData]).select().single();
 
     if (error) {
       toast({
@@ -84,13 +90,24 @@ const Templates = () => {
         title: "Erro ao criar gabarito",
         description: error.message,
       });
-    } else {
-      toast({
-        title: "Gabarito criado com sucesso!",
-      });
-      setDialogOpen(false);
-      loadTemplates();
+      return;
     }
+
+    // If there's a preset, auto-create questions with subjects
+    const preset = EXAM_PRESETS[examType];
+    if (preset) {
+      const presetQuestions = generatePresetQuestions(preset).map((q) => ({
+        ...q,
+        template_id: inserted.id,
+      }));
+      await supabase.from("template_questions").insert(presetQuestions);
+    }
+
+    toast({ title: "Gabarito criado com sucesso!" });
+    setDialogOpen(false);
+    setSelectedExamType("");
+    setTotalQuestions("");
+    loadTemplates();
   };
 
   const handleDeleteTemplate = async (id: string) => {
@@ -150,7 +167,19 @@ const Templates = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="exam_type">Tipo de Prova</Label>
-                  <Select name="exam_type" required>
+                  <Select
+                    value={selectedExamType}
+                    onValueChange={(value) => {
+                      setSelectedExamType(value);
+                      const preset = EXAM_PRESETS[value];
+                      if (preset) {
+                        setTotalQuestions(String(preset.totalQuestions));
+                      } else {
+                        setTotalQuestions("");
+                      }
+                    }}
+                    required
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
@@ -162,6 +191,11 @@ const Templates = () => {
                       <SelectItem value="custom">Personalizada</SelectItem>
                     </SelectContent>
                   </Select>
+                  {EXAM_PRESETS[selectedExamType] && (
+                    <p className="text-xs text-muted-foreground">
+                      Pré-configurado: {EXAM_PRESETS[selectedExamType].totalQuestions} questões com distribuição de disciplinas automática
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="total_questions">Número de Questões</Label>
@@ -171,8 +205,11 @@ const Templates = () => {
                     type="number"
                     min="1"
                     max="200"
+                    value={totalQuestions}
+                    onChange={(e) => setTotalQuestions(e.target.value)}
                     placeholder="40"
                     required
+                    readOnly={!!EXAM_PRESETS[selectedExamType]}
                   />
                 </div>
                 <Button type="submit" className="w-full">Criar Gabarito</Button>

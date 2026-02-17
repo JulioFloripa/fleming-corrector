@@ -439,7 +439,7 @@ const BoletimAcafe = () => {
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Template ACAFE</label>
+                <label className="text-sm font-medium">Escolha um Simulado/Prova:</label>
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o template" />

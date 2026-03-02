@@ -11,7 +11,7 @@ import FlemingLogo from "@/components/FlemingLogo";
 import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from "recharts";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { buildPDFForStudent, loadLogoBase64 } from "@/lib/pdf-boletim-acafe";
 
 interface Correction {
   id: string;
@@ -68,6 +68,11 @@ interface ClassStats {
   color: string;
 }
 
+interface StudentMeta {
+  campus?: string | null;
+  foreign_language?: string | null;
+}
+
 const BoletimAcafe = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -80,6 +85,7 @@ const BoletimAcafe = () => {
   const [allCorrections, setAllCorrections] = useState<Correction[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [studentsMetaMap, setStudentsMetaMap] = useState<Record<string, StudentMeta>>({});
 
   useEffect(() => {
     checkAuth();
@@ -99,13 +105,16 @@ const BoletimAcafe = () => {
     }
   }, [selectedCorrection]);
 
-  const checkAuth = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      navigate("/auth");
+  // Load student metadata (campus, foreign_language) for all students in corrections
+  useEffect(() => {
+    if (allCorrections.length > 0) {
+      loadStudentsMeta();
     }
+  }, [allCorrections]);
+
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) navigate("/auth");
   };
 
   const loadTemplates = async () => {
@@ -167,6 +176,24 @@ const BoletimAcafe = () => {
     setLoading(false);
   };
 
+  const loadStudentsMeta = async () => {
+    const names = [...new Set(allCorrections.map((c) => c.student_name))];
+    if (names.length === 0) return;
+
+    const { data } = await supabase
+      .from("students")
+      .select("name, campus, foreign_language")
+      .in("name", names);
+
+    if (data) {
+      const map: Record<string, StudentMeta> = {};
+      data.forEach((s) => {
+        map[s.name] = { campus: s.campus, foreign_language: s.foreign_language };
+      });
+      setStudentsMetaMap(map);
+    }
+  };
+
   const loadAnswersForCorrection = async (correctionId: string): Promise<StudentAnswer[]> => {
     const { data } = await supabase
       .from("student_answers")
@@ -178,18 +205,12 @@ const BoletimAcafe = () => {
 
   const calculateSubjectStatsFromAnswers = (answers: StudentAnswer[]): SubjectStats[] => {
     const stats: Record<string, { correct: number; total: number }> = {};
-
     answers.forEach((answer) => {
       const question = templateQuestions.find((q) => q.question_number === answer.question_number);
       const subject = question?.subject || "sem_disciplina";
-
-      if (!stats[subject]) {
-        stats[subject] = { correct: 0, total: 0 };
-      }
+      if (!stats[subject]) stats[subject] = { correct: 0, total: 0 };
       stats[subject].total++;
-      if (answer.is_correct) {
-        stats[subject].correct++;
-      }
+      if (answer.is_correct) stats[subject].correct++;
     });
 
     return Object.entries(stats)
@@ -210,34 +231,23 @@ const BoletimAcafe = () => {
 
   const calculateClassComparison = (): ClassStats[] => {
     const subjectStats = calculateSubjectStats();
+    const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
 
-    return subjectStats.map((stat) => {
-      // Calculate real class average per subject
-      const classCorrectTotal = allCorrections.reduce((sum, _c, _i) => {
-        // We don't have per-student-per-subject data loaded for all students here,
-        // so we use the general class average as approximation
-        return sum;
-      }, 0);
-      const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
-
-      return {
-        subject: stat.subject,
-        label: stat.label,
-        studentPercentage: stat.percentage,
-        classAverage: Math.round(classAvg),
-        studentCorrect: stat.correct,
-        studentTotal: stat.total,
-        classCorrect: Math.round((classAvg / 100) * stat.total),
-        classTotalQuestions: stat.total,
-        color: stat.color,
-      };
-    });
+    return subjectStats.map((stat) => ({
+      subject: stat.subject,
+      label: stat.label,
+      studentPercentage: stat.percentage,
+      classAverage: Math.round(classAvg),
+      studentCorrect: stat.correct,
+      studentTotal: stat.total,
+      classCorrect: Math.round((classAvg / 100) * stat.total),
+      classTotalQuestions: stat.total,
+      color: stat.color,
+    }));
   };
 
-  const getWrongQuestionsFromAnswers = (
-    answers: StudentAnswer[],
-  ): { question: number; subject: string; topic: string; studentAnswer: string; correctAnswer: string }[] => {
-    return answers
+  const getWrongQuestions = () => {
+    return studentAnswers
       .filter((a) => !a.is_correct)
       .map((a) => {
         const question = templateQuestions.find((q) => q.question_number === a.question_number);
@@ -250,8 +260,6 @@ const BoletimAcafe = () => {
         };
       });
   };
-
-  const getWrongQuestions = () => getWrongQuestionsFromAnswers(studentAnswers);
 
   const calculateRankingFor = (correctionId: string): number => {
     if (allCorrections.length === 0) return 0;
@@ -270,105 +278,25 @@ const BoletimAcafe = () => {
   const wrongQuestions = getWrongQuestions();
   const ranking = calculateRanking();
 
-  const buildPDFForStudent = (
-    doc: jsPDF,
-    student: Correction,
-    answers: StudentAnswer[],
-    studentRanking: number,
-    isFirst: boolean,
-  ) => {
-    if (!isFirst) {
-      doc.addPage();
-    }
-
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const stats = calculateSubjectStatsFromAnswers(answers);
-    const wrong = getWrongQuestionsFromAnswers(answers);
-
-    // Header
-    doc.setFillColor(22, 163, 74);
-    doc.rect(0, 0, pageWidth, 40, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(20);
-    doc.text("BOLETIM DE DESEMPENHO - ACAFE", pageWidth / 2, 18, { align: "center" });
-    doc.setFontSize(12);
-    doc.text("Fleming Medicina", pageWidth / 2, 28, { align: "center" });
-
-    // Student info
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(14);
-    doc.text(`Aluno: ${student.student_name}`, 14, 55);
-    doc.setFontSize(11);
-    doc.text(`Matrícula: ${student.student_id || "-"}`, 14, 63);
-    doc.text(`Data: ${new Date(student.created_at).toLocaleDateString("pt-BR")}`, 14, 71);
-
-    // Score box
-    doc.setFillColor(240, 253, 244);
-    doc.roundedRect(pageWidth - 70, 48, 56, 30, 3, 3, "F");
-    doc.setFontSize(10);
-    doc.setTextColor(22, 163, 74);
-    doc.text("NOTA GERAL", pageWidth - 42, 56, { align: "center" });
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "bold");
-    doc.text(`${student.percentage?.toFixed(1)}%`, pageWidth - 42, 72, { align: "center" });
-    doc.setFont("helvetica", "normal");
-
-    // Ranking
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(11);
-    doc.text(`Ranking na turma: ${studentRanking}º de ${allCorrections.length} alunos`, 14, 85);
-
-    // Subject table
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Desempenho por Disciplina", 14, 100);
-    doc.setFont("helvetica", "normal");
-
-    const tableData = stats.map((stat) => [stat.label, `${stat.correct}/${stat.total}`, `${stat.percentage}%`]);
-
-    autoTable(doc, {
-      startY: 105,
-      head: [["Disciplina", "Acertos", "Aproveitamento"]],
-      body: tableData,
-      theme: "striped",
-      headStyles: { fillColor: [22, 163, 74] },
-      margin: { left: 14, right: 14 },
-    });
-
-    // Wrong questions
-    const finalY = (doc as any).lastAutoTable?.finalY + 15 || 200;
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Questões a Revisar", 14, finalY);
-    doc.setFont("helvetica", "normal");
-
-    const wrongData = wrong
-      .slice(0, 15)
-      .map((q) => [`Q${q.question}`, q.subject, q.topic || "-", q.studentAnswer, q.correctAnswer]);
-
-    autoTable(doc, {
-      startY: finalY + 5,
-      head: [["Questão", "Disciplina", "Conteúdo", "Resposta", "Gabarito"]],
-      body: wrongData,
-      theme: "striped",
-      headStyles: { fillColor: [220, 38, 38] },
-      margin: { left: 14, right: 14 },
-    });
-
-    // Footer
-    const pageHeight = doc.internal.pageSize.getHeight();
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text("Fleming Medicina - Sistema de Correção de Provas", pageWidth / 2, pageHeight - 10, { align: "center" });
-  };
-
-  const generatePDF = () => {
+  const generatePDF = async () => {
     if (!selectedStudent) return;
 
     const doc = new jsPDF();
+    const logoData = await loadLogoBase64();
     const studentRanking = calculateRankingFor(selectedCorrection);
-    buildPDFForStudent(doc, selectedStudent, studentAnswers, studentRanking, true);
+
+    buildPDFForStudent({
+      doc,
+      student: selectedStudent,
+      answers: studentAnswers,
+      templateQuestions,
+      allCorrections,
+      studentRanking,
+      isFirst: true,
+      logoData,
+      studentMeta: studentsMetaMap[selectedStudent.student_name],
+    });
+
     doc.save(`boletim_${selectedStudent.student_name.replace(/\s+/g, "_")}_ACAFE.pdf`);
     toast({ title: "PDF gerado com sucesso!" });
   };
@@ -379,13 +307,25 @@ const BoletimAcafe = () => {
     setGeneratingAll(true);
     try {
       const doc = new jsPDF();
+      const logoData = await loadLogoBase64();
       const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
 
       for (let i = 0; i < allCorrections.length; i++) {
         const correction = allCorrections[i];
         const answers = await loadAnswersForCorrection(correction.id);
         const studentRanking = sorted.findIndex((c) => c.id === correction.id) + 1;
-        buildPDFForStudent(doc, correction, answers, studentRanking, i === 0);
+
+        buildPDFForStudent({
+          doc,
+          student: correction,
+          answers,
+          templateQuestions,
+          allCorrections,
+          studentRanking,
+          isFirst: i === 0,
+          logoData,
+          studentMeta: studentsMetaMap[correction.student_name],
+        });
       }
 
       doc.save(`boletins_ACAFE_todos.pdf`);

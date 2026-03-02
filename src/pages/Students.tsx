@@ -5,21 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,13 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Plus, Pencil, Trash2, Search, Users } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
@@ -50,7 +31,7 @@ interface Student {
 }
 
 const FOREIGN_LANGUAGES = ["Inglês", "Espanhol"];
-const CAMPUSES = ["Sede 1", "Sede 2", "Sede 3"];
+const CAMPUSES = ["Criciúma", "Chapecó", "Florianópolis"];
 
 const Students = () => {
   const navigate = useNavigate();
@@ -73,7 +54,9 @@ const Students = () => {
   }, []);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
       return;
@@ -120,7 +103,9 @@ const Students = () => {
       return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) return;
 
     const payload = {
@@ -132,10 +117,7 @@ const Students = () => {
     };
 
     if (editingStudent) {
-      const { error } = await supabase
-        .from("students")
-        .update(payload)
-        .eq("id", editingStudent.id);
+      const { error } = await supabase.from("students").update(payload).eq("id", editingStudent.id);
 
       if (error) {
         toast({ title: "Erro ao atualizar aluno", description: error.message, variant: "destructive" });
@@ -146,7 +128,11 @@ const Students = () => {
       const { error } = await supabase.from("students").insert(payload);
       if (error) {
         if (error.code === "23505") {
-          toast({ title: "Matrícula já cadastrada", description: "Já existe um aluno com essa matrícula.", variant: "destructive" });
+          toast({
+            title: "Matrícula já cadastrada",
+            description: "Já existe um aluno com essa matrícula.",
+            variant: "destructive",
+          });
         } else {
           toast({ title: "Erro ao cadastrar aluno", description: error.message, variant: "destructive" });
         }
@@ -279,11 +265,21 @@ const Students = () => {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="name">Nome *</Label>
-              <Input id="name" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Nome completo do aluno" />
+              <Input
+                id="name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="Nome completo do aluno"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="studentId">Matrícula</Label>
-              <Input id="studentId" value={formStudentId} onChange={(e) => setFormStudentId(e.target.value)} placeholder="Número de matrícula" />
+              <Input
+                id="studentId"
+                value={formStudentId}
+                onChange={(e) => setFormStudentId(e.target.value)}
+                placeholder="Número de matrícula"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="campus">Sede</Label>
@@ -293,7 +289,9 @@ const Students = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {CAMPUSES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -306,14 +304,18 @@ const Students = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {FOREIGN_LANGUAGES.map((l) => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                    <SelectItem key={l} value={l}>
+                      {l}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+              Cancelar
+            </Button>
             <Button onClick={handleSave}>{editingStudent ? "Salvar" : "Cadastrar"}</Button>
           </DialogFooter>
         </DialogContent>
@@ -330,7 +332,10 @@ const Students = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>

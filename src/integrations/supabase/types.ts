@@ -220,6 +220,7 @@ export type Database = {
           correct_answer: string
           created_at: string | null
           id: string
+          language_variant: string | null
           points: number | null
           question_number: number
           subject: string | null
@@ -230,6 +231,7 @@ export type Database = {
           correct_answer: string
           created_at?: string | null
           id?: string
+          language_variant?: string | null
           points?: number | null
           question_number: number
           subject?: string | null
@@ -240,6 +242,7 @@ export type Database = {
           correct_answer?: string
           created_at?: string | null
           id?: string
+          language_variant?: string | null
           points?: number | null
           question_number?: number
           subject?: string | null

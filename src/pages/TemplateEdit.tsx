@@ -19,6 +19,7 @@ interface TemplateQuestion {
   points: number;
   subject: string | null;
   topic: string | null;
+  language_variant: string | null;
 }
 
 interface DisciplineOption {
@@ -88,7 +89,7 @@ const TemplateEdit = () => {
         description: questionsError.message,
       });
     } else if (questionsData && questionsData.length > 0) {
-      setQuestions(questionsData);
+      setQuestions(questionsData.map(q => ({ ...q, language_variant: (q as any).language_variant ?? null })));
     } else {
       // Use preset if available, otherwise create empty questions
       const preset = EXAM_PRESETS[templateData.exam_type];
@@ -108,6 +109,7 @@ const TemplateEdit = () => {
             points: 1,
             subject: null,
             topic: null,
+            language_variant: null,
           })
         );
         setQuestions(emptyQuestions);
@@ -134,6 +136,7 @@ const TemplateEdit = () => {
       points: q.points,
       subject: q.subject,
       topic: q.topic,
+      language_variant: q.language_variant,
     }));
 
     const { error } = await supabase.from("template_questions").insert(questionsToInsert);
@@ -238,87 +241,114 @@ const TemplateEdit = () => {
                 </tr>
               </thead>
               <tbody>
-                {questions.map((question, index) => (
-                  <tr key={question.id} className="border-b last:border-0 hover:bg-muted/50">
-                    <td className="py-2 px-2 font-medium">{question.question_number}</td>
-                    <td className="py-2 px-2">
-                      <Select
-                        value={question.correct_answer}
-                        onValueChange={(value) => updateQuestion(index, { correct_answer: value })}
-                      >
-                        <SelectTrigger className="h-8 w-20">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(EXAM_PRESETS[template?.exam_type]?.alternatives || ["A", "B", "C", "D", "E"]).map((alt) => (
-                            <SelectItem key={alt} value={alt}>{alt}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="py-2 px-2">
-                      <Select
-                        value={question.subject || "__none__"}
-                        onValueChange={(value) => {
-                          const realValue = value === "__none__" ? null : value;
-                          updateQuestion(index, { subject: realValue, topic: null });
-                        }}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Selecione...</SelectItem>
-                          {disciplines.map((disc) => (
-                            <SelectItem key={disc.id} value={disc.name}>
-                              {disc.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="py-2 px-2">
-                      {getTopicsForDiscipline(question.subject).length > 0 ? (
-                        <Select
-                          value={question.topic || "__none__"}
-                          onValueChange={(value) => updateQuestion(index, { topic: value === "__none__" ? null : value })}
-                        >
-                          <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">Selecione...</SelectItem>
-                            {getTopicsForDiscipline(question.subject).map((t) => (
-                              <SelectItem key={t.id} value={t.name}>
-                                {t.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <Input
-                          className="h-8"
-                          placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina"}
-                          value={question.topic || ""}
-                          onChange={(e) => updateQuestion(index, { topic: e.target.value || null })}
-                          disabled={!question.subject}
-                        />
-                      )}
-                    </td>
-                    <td className="py-2 px-2">
-                      <Input
-                        className="h-8 w-20"
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={question.points}
-                        onChange={(e) =>
-                          updateQuestion(index, { points: parseFloat(e.target.value) || 0 })
-                        }
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {questions.map((question, index) => {
+                  const isVariant = question.language_variant != null;
+                  const isSecondVariant = isVariant && question.language_variant === "Espanhol";
+                  
+                  return (
+                    <tr 
+                      key={question.id} 
+                      className={`border-b last:border-0 hover:bg-muted/50 ${isVariant ? 'bg-accent/20' : ''} ${isSecondVariant ? 'border-b-2 border-b-border' : ''}`}
+                    >
+                      <td className="py-2 px-2 font-medium">
+                        {isSecondVariant ? "" : question.question_number}
+                      </td>
+                      <td className="py-2 px-2">
+                        <div className="flex items-center gap-1">
+                          {isVariant && (
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {question.language_variant === "Inglês" ? "🇬🇧" : "🇪🇸"}
+                            </span>
+                          )}
+                          <Select
+                            value={question.correct_answer}
+                            onValueChange={(value) => updateQuestion(index, { correct_answer: value })}
+                          >
+                            <SelectTrigger className="h-8 w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(EXAM_PRESETS[template?.exam_type]?.alternatives || ["A", "B", "C", "D", "E"]).map((alt) => (
+                                <SelectItem key={alt} value={alt}>{alt}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </td>
+                      <td className="py-2 px-2">
+                        {isVariant ? (
+                          <span className="text-xs text-muted-foreground">
+                            Língua Estrangeira ({question.language_variant})
+                          </span>
+                        ) : (
+                          <Select
+                            value={question.subject || "__none__"}
+                            onValueChange={(value) => {
+                              const realValue = value === "__none__" ? null : value;
+                              updateQuestion(index, { subject: realValue, topic: null });
+                            }}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">Selecione...</SelectItem>
+                              {disciplines.map((disc) => (
+                                <SelectItem key={disc.id} value={disc.name}>
+                                  {disc.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </td>
+                      <td className="py-2 px-2">
+                        {isVariant ? null : (
+                          getTopicsForDiscipline(question.subject).length > 0 ? (
+                            <Select
+                              value={question.topic || "__none__"}
+                              onValueChange={(value) => updateQuestion(index, { topic: value === "__none__" ? null : value })}
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">Selecione...</SelectItem>
+                                {getTopicsForDiscipline(question.subject).map((t) => (
+                                  <SelectItem key={t.id} value={t.name}>
+                                    {t.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input
+                              className="h-8"
+                              placeholder={question.subject ? "Nenhum conteúdo cadastrado" : "Selecione a disciplina"}
+                              value={question.topic || ""}
+                              onChange={(e) => updateQuestion(index, { topic: e.target.value || null })}
+                              disabled={!question.subject}
+                            />
+                          )
+                        )}
+                      </td>
+                      <td className="py-2 px-2">
+                        {isSecondVariant ? null : (
+                          <Input
+                            className="h-8 w-20"
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={question.points}
+                            onChange={(e) =>
+                              updateQuestion(index, { points: parseFloat(e.target.value) || 0 })
+                            }
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </CardContent>

@@ -11,10 +11,10 @@ export async function recalculateByTemplate(templateId: string): Promise<{ succe
     return { success: false, correctionsUpdated: 0, error: qError?.message || "Erro ao buscar questões do gabarito" };
   }
 
-  // 2. Fetch all corrections for this template
+  // 2. Fetch all corrections for this template (with student info for language)
   const { data: corrections, error: cError } = await supabase
     .from("corrections")
-    .select("id")
+    .select("id, student_name, student_id")
     .eq("template_id", templateId);
 
   if (cError || !corrections) {
@@ -25,8 +25,26 @@ export async function recalculateByTemplate(templateId: string): Promise<{ succe
     return { success: true, correctionsUpdated: 0 };
   }
 
-  // Build a map of question_number -> question for quick lookup
-  const questionMap = new Map(questions.map(q => [q.question_number, q]));
+  // Pre-load students to get their foreign_language
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id ?? "";
+  const { data: allStudents } = await supabase
+    .from("students")
+    .select("name, student_id, foreign_language")
+    .eq("user_id", userId);
+
+  const studentLangMap = new Map<string, string>();
+  (allStudents || []).forEach(s => {
+    if (s.student_id) studentLangMap.set(`id:${s.student_id}`, s.foreign_language || "Inglês");
+    studentLangMap.set(`name:${s.name}`, s.foreign_language || "Inglês");
+  });
+
+  const getStudentLanguage = (correction: { student_name: string; student_id: string | null }): string => {
+    if (correction.student_id && studentLangMap.has(`id:${correction.student_id}`)) {
+      return studentLangMap.get(`id:${correction.student_id}`)!;
+    }
+    return studentLangMap.get(`name:${correction.student_name}`) || "Inglês";
+  };
 
   let correctionsUpdated = 0;
 
@@ -38,6 +56,16 @@ export async function recalculateByTemplate(templateId: string): Promise<{ succe
       .eq("correction_id", correction.id);
 
     if (aError || !answers) continue;
+
+    // Filter questions by student's language
+    const studentLang = getStudentLanguage(correction);
+    const filteredQuestions = questions.filter(q => {
+      const variant = (q as any).language_variant;
+      if (!variant) return true;
+      return variant === studentLang;
+    });
+
+    const questionMap = new Map(filteredQuestions.map(q => [q.question_number, q]));
 
     let totalScore = 0;
     let maxScore = 0;

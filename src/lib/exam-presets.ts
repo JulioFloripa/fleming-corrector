@@ -15,7 +15,7 @@ export const EXAM_PRESETS: Record<string, ExamPreset> = {
     alternatives: ["A", "B", "C", "D"],
     subjects: [
       { subject: "Português", count: 14 },
-      { subject: "Inglês", count: 7 },
+      { subject: "Língua Estrangeira", count: 7 },
       { subject: "Matemática", count: 7 },
       { subject: "Física", count: 7 },
       { subject: "Química", count: 7 },
@@ -40,18 +40,40 @@ export const EXAM_PRESETS: Record<string, ExamPreset> = {
  * Generate pre-populated questions array from an exam preset.
  */
 export function generatePresetQuestions(preset: ExamPreset) {
-  const questions: { question_number: number; correct_answer: string; points: number; subject: string | null; topic: string | null }[] = [];
+  const questions: { question_number: number; correct_answer: string; points: number; subject: string | null; topic: string | null; language_variant: string | null }[] = [];
   let questionNum = 1;
 
   for (const block of preset.subjects) {
+    const isForeignLanguage = block.subject === "Língua Estrangeira";
     for (let i = 0; i < block.count; i++) {
-      questions.push({
-        question_number: questionNum,
-        correct_answer: "A",
-        points: 1,
-        subject: block.subject,
-        topic: null,
-      });
+      if (isForeignLanguage) {
+        // Generate two rows per question: one for each language variant
+        questions.push({
+          question_number: questionNum,
+          correct_answer: "A",
+          points: 1,
+          subject: "Língua Estrangeira",
+          topic: null,
+          language_variant: "Inglês",
+        });
+        questions.push({
+          question_number: questionNum,
+          correct_answer: "A",
+          points: 1,
+          subject: "Língua Estrangeira",
+          topic: null,
+          language_variant: "Espanhol",
+        });
+      } else {
+        questions.push({
+          question_number: questionNum,
+          correct_answer: "A",
+          points: 1,
+          subject: block.subject,
+          topic: null,
+          language_variant: null,
+        });
+      }
       questionNum++;
     }
   }

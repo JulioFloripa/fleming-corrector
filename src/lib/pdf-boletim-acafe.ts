@@ -1,7 +1,7 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
-import flemingLogo from "@/assets/fleming-logo.png";
+import flemingLogo from "@/assets/fleming-logo-white.png";
 
 interface Correction {
   id: string;

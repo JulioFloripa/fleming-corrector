@@ -100,7 +100,9 @@ const BoletimAcafe = () => {
   }, [selectedCorrection]);
 
   const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       navigate("/auth");
     }
@@ -178,7 +180,7 @@ const BoletimAcafe = () => {
     const stats: Record<string, { correct: number; total: number }> = {};
 
     answers.forEach((answer) => {
-      const question = templateQuestions.find(q => q.question_number === answer.question_number);
+      const question = templateQuestions.find((q) => q.question_number === answer.question_number);
       const subject = question?.subject || "sem_disciplina";
 
       if (!stats[subject]) {
@@ -209,7 +211,7 @@ const BoletimAcafe = () => {
   const calculateClassComparison = (): ClassStats[] => {
     const subjectStats = calculateSubjectStats();
 
-    return subjectStats.map(stat => {
+    return subjectStats.map((stat) => {
       // Calculate real class average per subject
       const classCorrectTotal = allCorrections.reduce((sum, _c, _i) => {
         // We don't have per-student-per-subject data loaded for all students here,
@@ -232,11 +234,13 @@ const BoletimAcafe = () => {
     });
   };
 
-  const getWrongQuestionsFromAnswers = (answers: StudentAnswer[]): { question: number; subject: string; topic: string; studentAnswer: string; correctAnswer: string }[] => {
+  const getWrongQuestionsFromAnswers = (
+    answers: StudentAnswer[],
+  ): { question: number; subject: string; topic: string; studentAnswer: string; correctAnswer: string }[] => {
     return answers
-      .filter(a => !a.is_correct)
-      .map(a => {
-        const question = templateQuestions.find(q => q.question_number === a.question_number);
+      .filter((a) => !a.is_correct)
+      .map((a) => {
+        const question = templateQuestions.find((q) => q.question_number === a.question_number);
         return {
           question: a.question_number,
           subject: getSubjectLabel(question?.subject || ""),
@@ -252,7 +256,7 @@ const BoletimAcafe = () => {
   const calculateRankingFor = (correctionId: string): number => {
     if (allCorrections.length === 0) return 0;
     const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
-    return sorted.findIndex(c => c.id === correctionId) + 1;
+    return sorted.findIndex((c) => c.id === correctionId) + 1;
   };
 
   const calculateRanking = (): number => {
@@ -260,7 +264,7 @@ const BoletimAcafe = () => {
     return calculateRankingFor(selectedCorrection);
   };
 
-  const selectedStudent = corrections.find(c => c.id === selectedCorrection);
+  const selectedStudent = corrections.find((c) => c.id === selectedCorrection);
   const subjectStats = calculateSubjectStats();
   const classComparison = calculateClassComparison();
   const wrongQuestions = getWrongQuestions();
@@ -271,7 +275,7 @@ const BoletimAcafe = () => {
     student: Correction,
     answers: StudentAnswer[],
     studentRanking: number,
-    isFirst: boolean
+    isFirst: boolean,
   ) => {
     if (!isFirst) {
       doc.addPage();
@@ -321,11 +325,7 @@ const BoletimAcafe = () => {
     doc.text("Desempenho por Disciplina", 14, 100);
     doc.setFont("helvetica", "normal");
 
-    const tableData = stats.map(stat => [
-      stat.label,
-      `${stat.correct}/${stat.total}`,
-      `${stat.percentage}%`,
-    ]);
+    const tableData = stats.map((stat) => [stat.label, `${stat.correct}/${stat.total}`, `${stat.percentage}%`]);
 
     autoTable(doc, {
       startY: 105,
@@ -343,13 +343,9 @@ const BoletimAcafe = () => {
     doc.text("Questões a Revisar", 14, finalY);
     doc.setFont("helvetica", "normal");
 
-    const wrongData = wrong.slice(0, 15).map(q => [
-      `Q${q.question}`,
-      q.subject,
-      q.topic || "-",
-      q.studentAnswer,
-      q.correctAnswer,
-    ]);
+    const wrongData = wrong
+      .slice(0, 15)
+      .map((q) => [`Q${q.question}`, q.subject, q.topic || "-", q.studentAnswer, q.correctAnswer]);
 
     autoTable(doc, {
       startY: finalY + 5,
@@ -388,7 +384,7 @@ const BoletimAcafe = () => {
       for (let i = 0; i < allCorrections.length; i++) {
         const correction = allCorrections[i];
         const answers = await loadAnswersForCorrection(correction.id);
-        const studentRanking = sorted.findIndex(c => c.id === correction.id) + 1;
+        const studentRanking = sorted.findIndex((c) => c.id === correction.id) + 1;
         buildPDFForStudent(doc, correction, answers, studentRanking, i === 0);
       }
 
@@ -435,14 +431,16 @@ const BoletimAcafe = () => {
           <Card>
             <CardHeader>
               <CardTitle>Selecionar Aluno</CardTitle>
-              <CardDescription>Escolha o template e o aluno para gerar o boletim, ou gere todos de uma vez</CardDescription>
+              <CardDescription>
+                Escolha o template e o aluno para gerar o boletim, ou gere todos de uma vez
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Escolha um Simulado/Prova:</label>
                 <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o template" />
+                    <SelectValue placeholder="Selecione o Simulado" />
                   </SelectTrigger>
                   <SelectContent>
                     {templates.map((t) => (
@@ -500,7 +498,7 @@ const BoletimAcafe = () => {
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Acertos</p>
                       <p className="text-3xl font-bold">
-                        {studentAnswers.filter(a => a.is_correct).length}/{studentAnswers.length}
+                        {studentAnswers.filter((a) => a.is_correct).length}/{studentAnswers.length}
                       </p>
                     </div>
                   </CardContent>
@@ -509,7 +507,10 @@ const BoletimAcafe = () => {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <p className="text-sm text-muted-foreground">Ranking</p>
-                      <p className="text-3xl font-bold">{ranking}º <span className="text-sm font-normal text-muted-foreground">de {allCorrections.length}</span></p>
+                      <p className="text-3xl font-bold">
+                        {ranking}º{" "}
+                        <span className="text-sm font-normal text-muted-foreground">de {allCorrections.length}</span>
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -541,18 +542,18 @@ const BoletimAcafe = () => {
                         <Bar dataKey="studentPercentage" name="Seu desempenho" fill="#16a34a">
                           <LabelList
                             formatter={(value: number) => {
-                              const item = classComparison.find(c => c.studentPercentage === value);
+                              const item = classComparison.find((c) => c.studentPercentage === value);
                               return item ? `${item.studentCorrect}/${item.studentTotal}` : `${value}%`;
                             }}
                             position="top"
-                            style={{ fontSize: 11, fill: '#16a34a', fontWeight: 600 }}
+                            style={{ fontSize: 11, fill: "#16a34a", fontWeight: 600 }}
                           />
                         </Bar>
                         <Bar dataKey="classAverage" name="Média da turma" fill="#94a3b8">
                           <LabelList
                             formatter={(value: number) => `${value}%`}
                             position="top"
-                            style={{ fontSize: 11, fill: '#64748b', fontWeight: 600 }}
+                            style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }}
                           />
                         </Bar>
                       </BarChart>
@@ -585,10 +586,7 @@ const BoletimAcafe = () => {
                         <TableRow key={stat.subject}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: stat.color }}
-                              />
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stat.color }} />
                               {stat.label}
                             </div>
                           </TableCell>

@@ -304,7 +304,15 @@ const Correct = () => {
               let maxScore = 0;
               const answersToInsert: any[] = [];
 
-              for (const question of questions || []) {
+              // Filter questions by student's language for foreign language variant questions
+              const studentLang = studentLanguage || "Inglês"; // default to Inglês
+              const filteredQuestions = (questions || []).filter(q => {
+                const variant = (q as any).language_variant;
+                if (!variant) return true; // normal question
+                return variant === studentLang; // only matching language variant
+              });
+
+              for (const question of filteredQuestions) {
                 const qNum = question.question_number;
                 const paddedNum = String(qNum).padStart(2, '0');
                 const rawAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];

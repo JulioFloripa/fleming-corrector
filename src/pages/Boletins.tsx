@@ -36,7 +36,7 @@ const Boletins = () => {
     const { data: templates, error: tError } = await supabase
       .from("templates")
       .select("id, name, exam_type")
-      .ilike("exam_type", "acafe")
+      .or("exam_type.ilike.acafe,exam_type.ilike.acafe_criciuma")
       .order("created_at", { ascending: false });
 
     if (tError || !templates || templates.length === 0) {
@@ -102,7 +102,7 @@ const Boletins = () => {
                 <Card
                   key={boletim.id}
                   className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50"
-                  onClick={() => navigate("/boletins/acafe")}
+                  onClick={() => navigate(boletim.exam_type === "acafe_criciuma" ? "/boletins/acafe" : "/boletins/acafe")}
                 >
                   <CardHeader>
                     <div className="flex items-center gap-3">
@@ -110,9 +110,9 @@ const Boletins = () => {
                         <FileText className="h-6 w-6 text-primary" />
                       </div>
                       <div>
-                        <CardTitle>Boletim ACAFE</CardTitle>
+                        <CardTitle>{boletim.name}</CardTitle>
                         <CardDescription>
-                          Boletim de desempenho para provas no formato ACAFE
+                          Boletim de desempenho - {boletim.exam_type.toUpperCase()}
                         </CardDescription>
                       </div>
                     </div>

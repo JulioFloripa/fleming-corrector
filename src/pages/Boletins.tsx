@@ -36,7 +36,6 @@ const Boletins = () => {
     const { data: templates, error: tError } = await supabase
       .from("templates")
       .select("id, name, exam_type")
-      .or("exam_type.ilike.acafe,exam_type.ilike.acafe_criciuma")
       .order("created_at", { ascending: false });
 
     if (tError || !templates || templates.length === 0) {

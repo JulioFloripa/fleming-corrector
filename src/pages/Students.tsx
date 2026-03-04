@@ -28,6 +28,7 @@ interface Student {
   student_id: string | null;
   campus: string | null;
   foreign_language: string | null;
+  email: string | null;
 }
 
 const FOREIGN_LANGUAGES = ["Inglês", "Espanhol"];
@@ -48,6 +49,7 @@ const Students = () => {
   const [formStudentId, setFormStudentId] = useState("");
   const [formCampus, setFormCampus] = useState("");
   const [formLanguage, setFormLanguage] = useState("");
+  const [formEmail, setFormEmail] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -68,7 +70,7 @@ const Students = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("students")
-      .select("id, name, student_id, campus, foreign_language")
+      .select("id, name, student_id, campus, foreign_language, email")
       .order("name");
 
     if (error) {
@@ -85,6 +87,7 @@ const Students = () => {
     setFormStudentId("");
     setFormCampus("");
     setFormLanguage("");
+    setFormEmail("");
     setDialogOpen(true);
   };
 
@@ -94,6 +97,7 @@ const Students = () => {
     setFormStudentId(student.student_id || "");
     setFormCampus(student.campus || "");
     setFormLanguage(student.foreign_language || "");
+    setFormEmail(student.email || "");
     setDialogOpen(true);
   };
 
@@ -113,6 +117,7 @@ const Students = () => {
       student_id: formStudentId.trim() || null,
       campus: formCampus || null,
       foreign_language: formLanguage || null,
+      email: formEmail.trim() || null,
       user_id: session.user.id,
     };
 
@@ -226,6 +231,7 @@ const Students = () => {
                       <TableHead>Matrícula</TableHead>
                       <TableHead>Sede</TableHead>
                       <TableHead>Língua Estrangeira</TableHead>
+                      <TableHead>E-mail</TableHead>
                       <TableHead className="w-24">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -236,6 +242,7 @@ const Students = () => {
                         <TableCell>{student.student_id || "—"}</TableCell>
                         <TableCell>{student.campus || "—"}</TableCell>
                         <TableCell>{student.foreign_language || "—"}</TableCell>
+                        <TableCell>{student.email || "—"}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEditDialog(student)}>
@@ -310,6 +317,16 @@ const Students = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+              />
             </div>
           </div>
           <DialogFooter>

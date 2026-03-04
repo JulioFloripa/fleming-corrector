@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, FileDown, Users, Download, Trophy } from "lucide-react";
+import { ArrowLeft, FileDown, Users, Download, Trophy, Mail, Loader2 } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from "recharts";
@@ -71,6 +71,7 @@ interface ClassStats {
 interface StudentMeta {
   campus?: string | null;
   foreign_language?: string | null;
+  email?: string | null;
 }
 
 const BoletimAcafe = () => {
@@ -85,6 +86,8 @@ const BoletimAcafe = () => {
   const [allCorrections, setAllCorrections] = useState<Correction[]>([]);
   const [loading, setLoading] = useState(false);
   const [generatingAll, setGeneratingAll] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [sendingAllEmails, setSendingAllEmails] = useState(false);
   const [studentsMetaMap, setStudentsMetaMap] = useState<Record<string, StudentMeta>>({});
 
   useEffect(() => {
@@ -181,13 +184,13 @@ const BoletimAcafe = () => {
 
     const { data } = await supabase
       .from("students")
-      .select("name, campus, foreign_language")
+      .select("name, campus, foreign_language, email")
       .in("name", names);
 
     if (data) {
       const map: Record<string, StudentMeta> = {};
-      data.forEach((s) => {
-        map[s.name] = { campus: s.campus, foreign_language: s.foreign_language };
+      data.forEach((s: { name: string; campus: string | null; foreign_language: string | null; email: string | null }) => {
+        map[s.name] = { campus: s.campus, foreign_language: s.foreign_language, email: s.email };
       });
       setStudentsMetaMap(map);
     }
@@ -440,6 +443,109 @@ const BoletimAcafe = () => {
     }
   };
 
+  const generatePDFBase64 = async (correction: Correction, answers: StudentAnswer[]): Promise<string> => {
+    const doc = new jsPDF();
+    const logoData = await loadLogoBase64();
+    const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+    const studentRanking = sorted.findIndex((c) => c.id === correction.id) + 1;
+
+    buildPDFForStudent({
+      doc,
+      student: correction,
+      answers,
+      templateQuestions,
+      allCorrections,
+      studentRanking,
+      isFirst: true,
+      logoData,
+      studentMeta: studentsMetaMap[correction.student_name],
+    });
+
+    // Get base64 without data URI prefix
+    const pdfOutput = doc.output('datauristring');
+    return pdfOutput.split(',')[1];
+  };
+
+  const sendEmailToStudent = async () => {
+    if (!selectedStudent) return;
+    const meta = studentsMetaMap[selectedStudent.student_name];
+    if (!meta?.email) {
+      toast({ title: "E-mail não cadastrado", description: "Cadastre o e-mail do aluno na página de Alunos.", variant: "destructive" });
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const pdfBase64 = await generatePDFBase64(selectedStudent, studentAnswers);
+      const templateName = templates.find((t) => t.id === selectedTemplate)?.name || "Simulado";
+
+      const { data, error } = await supabase.functions.invoke('send-boletim-email', {
+        body: {
+          to: meta.email,
+          studentName: selectedStudent.student_name,
+          templateName,
+          pdfBase64,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "E-mail enviado!", description: `Boletim enviado para ${meta.email}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro desconhecido";
+      toast({ title: "Erro ao enviar e-mail", description: msg, variant: "destructive" });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const sendEmailToAll = async () => {
+    setSendingAllEmails(true);
+    let sent = 0;
+    let failed = 0;
+    const templateName = templates.find((t) => t.id === selectedTemplate)?.name || "Simulado";
+
+    try {
+      for (const correction of allCorrections) {
+        const meta = studentsMetaMap[correction.student_name];
+        if (!meta?.email) {
+          failed++;
+          continue;
+        }
+
+        try {
+          const answers = await loadAnswersForCorrection(correction.id);
+          const pdfBase64 = await generatePDFBase64(correction, answers);
+
+          const { data, error } = await supabase.functions.invoke('send-boletim-email', {
+            body: {
+              to: meta.email,
+              studentName: correction.student_name,
+              templateName,
+              pdfBase64,
+            },
+          });
+
+          if (error || data?.error) {
+            failed++;
+          } else {
+            sent++;
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      toast({
+        title: "Envio concluído",
+        description: `${sent} enviado(s), ${failed} falha(s) ou sem e-mail.`,
+      });
+    } finally {
+      setSendingAllEmails(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -451,7 +557,7 @@ const BoletimAcafe = () => {
             <FlemingLogo size="sm" />
             <h1 className="text-xl font-bold">Boletim de Desempenho ACAFE</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {allCorrections.length > 0 && (
               <Button variant="outline" onClick={generateRankingPDF}>
                 <Trophy className="h-4 w-4 mr-2" />
@@ -464,10 +570,22 @@ const BoletimAcafe = () => {
                 {generatingAll ? "Gerando..." : `Gerar Todos (${allCorrections.length})`}
               </Button>
             )}
+            {allCorrections.length > 0 && (
+              <Button variant="outline" onClick={sendEmailToAll} disabled={sendingAllEmails}>
+                {sendingAllEmails ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                {sendingAllEmails ? "Enviando..." : `Enviar Todos`}
+              </Button>
+            )}
             {selectedStudent && (
               <Button onClick={generatePDF}>
                 <FileDown className="h-4 w-4 mr-2" />
                 Gerar PDF
+              </Button>
+            )}
+            {selectedStudent && (
+              <Button variant="outline" onClick={sendEmailToStudent} disabled={sendingEmail}>
+                {sendingEmail ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Mail className="h-4 w-4 mr-2" />}
+                {sendingEmail ? "Enviando..." : "Enviar E-mail"}
               </Button>
             )}
           </div>

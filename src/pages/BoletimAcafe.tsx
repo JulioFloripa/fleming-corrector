@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, FileDown, Users, Download } from "lucide-react";
+import { ArrowLeft, FileDown, Users, Download, Trophy } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 import { getSubjectLabel, getSubjectColor } from "@/lib/acafe-subjects";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from "recharts";
@@ -300,6 +300,110 @@ const BoletimAcafe = () => {
     toast({ title: "PDF gerado com sucesso!" });
   };
 
+  const generateRankingPDF = async () => {
+    if (allCorrections.length === 0) return;
+
+    const doc = new jsPDF();
+    const logoData = await loadLogoBase64();
+    const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+    const templateName = templates.find((t) => t.id === selectedTemplate)?.name || "Simulado";
+
+    const pageW = doc.internal.pageSize.getWidth();
+    if (logoData) {
+      doc.addImage(logoData, "PNG", 14, 10, 30, 30);
+    }
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Classificação Geral", logoData ? 50 : 14, 22);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.text(templateName, logoData ? 50 : 14, 30);
+    doc.text(`Total de alunos: ${sorted.length}`, logoData ? 50 : 14, 36);
+    doc.text(`Data: ${new Date().toLocaleDateString("pt-BR")}`, pageW - 14, 22, { align: "right" });
+
+    doc.setDrawColor(34, 139, 34);
+    doc.setLineWidth(0.8);
+    doc.line(14, 44, pageW - 14, 44);
+
+    let y = 54;
+    const colPos = { pos: 18, name: 34, campus: 120, score: 150, pct: 175 };
+
+    const drawTableHeader = () => {
+      doc.setFillColor(34, 139, 34);
+      doc.rect(14, y - 5, pageW - 28, 8, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("Pos.", colPos.pos, y);
+      doc.text("Aluno", colPos.name, y);
+      doc.text("Sede", colPos.campus, y);
+      doc.text("Acertos", colPos.score, y);
+      doc.text("%", colPos.pct, y);
+      doc.setTextColor(0, 0, 0);
+      y += 8;
+    };
+
+    drawTableHeader();
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+
+    for (let i = 0; i < sorted.length; i++) {
+      if (y > 275) {
+        doc.addPage();
+        y = 20;
+        drawTableHeader();
+      }
+
+      const c = sorted[i];
+      const meta = studentsMetaMap[c.student_name];
+
+      if (i % 2 === 0) {
+        doc.setFillColor(245, 245, 245);
+        doc.rect(14, y - 4, pageW - 28, 7, "F");
+      }
+
+      if (i < 3) {
+        doc.setFont("helvetica", "bold");
+      } else {
+        doc.setFont("helvetica", "normal");
+      }
+      doc.text(`${i + 1}º`, colPos.pos, y);
+
+      const name = c.student_name.length > 40 ? c.student_name.substring(0, 40) + "..." : c.student_name;
+      doc.text(name, colPos.name, y);
+      doc.text(meta?.campus || "-", colPos.campus, y);
+      doc.text(`${c.total_score || 0}/${c.max_score || 0}`, colPos.score, y);
+
+      const pct = c.percentage || 0;
+      if (pct >= 70) doc.setTextColor(34, 139, 34);
+      else if (pct >= 50) doc.setTextColor(200, 150, 0);
+      else doc.setTextColor(200, 50, 50);
+      doc.text(`${pct.toFixed(1)}%`, colPos.pct, y);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "normal");
+
+      y += 7;
+    }
+
+    y += 5;
+    if (y > 260) { doc.addPage(); y = 20; }
+    const avgPct = sorted.reduce((s, c) => s + (c.percentage || 0), 0) / sorted.length;
+    const maxPct = sorted[0]?.percentage || 0;
+    const minPct = sorted[sorted.length - 1]?.percentage || 0;
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(14, y, pageW - 14, y);
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Estatísticas:", 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Média: ${avgPct.toFixed(1)}%    |    Maior nota: ${maxPct.toFixed(1)}%    |    Menor nota: ${minPct.toFixed(1)}%`, 50, y);
+
+    doc.save(`classificacao_${templateName.replace(/\s+/g, "_")}.pdf`);
+    toast({ title: "Classificação gerada com sucesso!" });
+  };
+
   const generateAllPDFs = async () => {
     if (allCorrections.length === 0) return;
 
@@ -348,6 +452,12 @@ const BoletimAcafe = () => {
             <h1 className="text-xl font-bold">Boletim de Desempenho ACAFE</h1>
           </div>
           <div className="flex items-center gap-2">
+            {allCorrections.length > 0 && (
+              <Button variant="outline" onClick={generateRankingPDF}>
+                <Trophy className="h-4 w-4 mr-2" />
+                Classificação
+              </Button>
+            )}
             {allCorrections.length > 0 && (
               <Button variant="outline" onClick={generateAllPDFs} disabled={generatingAll}>
                 <Download className="h-4 w-4 mr-2" />

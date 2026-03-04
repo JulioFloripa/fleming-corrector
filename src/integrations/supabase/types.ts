@@ -186,6 +186,7 @@ export type Database = {
         Row: {
           campus: string | null
           created_at: string
+          email: string | null
           foreign_language: string | null
           id: string
           name: string
@@ -196,6 +197,7 @@ export type Database = {
         Insert: {
           campus?: string | null
           created_at?: string
+          email?: string | null
           foreign_language?: string | null
           id?: string
           name: string
@@ -206,6 +208,7 @@ export type Database = {
         Update: {
           campus?: string | null
           created_at?: string
+          email?: string | null
           foreign_language?: string | null
           id?: string
           name?: string

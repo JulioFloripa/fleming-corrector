@@ -89,6 +89,7 @@ const BoletimAcafe = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingAllEmails, setSendingAllEmails] = useState(false);
   const [studentsMetaMap, setStudentsMetaMap] = useState<Record<string, StudentMeta>>({});
+  const [allStudentAnswersMap, setAllStudentAnswersMap] = useState<Map<string, StudentAnswer[]>>(new Map());
 
   useEffect(() => {
     checkAuth();
@@ -112,6 +113,7 @@ const BoletimAcafe = () => {
   useEffect(() => {
     if (allCorrections.length > 0) {
       loadStudentsMeta();
+      loadAllStudentAnswers();
     }
   }, [allCorrections]);
 
@@ -196,6 +198,15 @@ const BoletimAcafe = () => {
     }
   };
 
+  const loadAllStudentAnswers = async () => {
+    const map = new Map<string, StudentAnswer[]>();
+    for (const corr of allCorrections) {
+      const answers = await loadAnswersForCorrection(corr.id);
+      map.set(corr.id, answers);
+    }
+    setAllStudentAnswersMap(map);
+  };
+
   const loadAnswersForCorrection = async (correctionId: string): Promise<StudentAnswer[]> => {
     const { data } = await supabase
       .from("student_answers")
@@ -233,19 +244,37 @@ const BoletimAcafe = () => {
 
   const calculateClassComparison = (): ClassStats[] => {
     const subjectStats = calculateSubjectStats();
-    const classAvg = allCorrections.reduce((sum, c) => sum + (c.percentage || 0), 0) / (allCorrections.length || 1);
 
-    return subjectStats.map((stat) => ({
-      subject: stat.subject,
-      label: stat.label,
-      studentPercentage: stat.percentage,
-      classAverage: Math.round(classAvg),
-      studentCorrect: stat.correct,
-      studentTotal: stat.total,
-      classCorrect: Math.round((classAvg / 100) * stat.total),
-      classTotalQuestions: stat.total,
-      color: stat.color,
-    }));
+    // Calculate per-subject class averages from all students' answers
+    const subjectTotals: Record<string, { correct: number; total: number }> = {};
+    allStudentAnswersMap.forEach((answers) => {
+      answers.forEach((answer) => {
+        const question = templateQuestions.find((q) => q.question_number === answer.question_number);
+        const subject = question?.subject || "sem_disciplina";
+        if (subject === "sem_disciplina") return;
+        if (!subjectTotals[subject]) subjectTotals[subject] = { correct: 0, total: 0 };
+        subjectTotals[subject].total++;
+        if (answer.is_correct) subjectTotals[subject].correct++;
+      });
+    });
+
+    return subjectStats.map((stat) => {
+      const classData = subjectTotals[stat.subject];
+      const classAvg = classData && classData.total > 0
+        ? Math.round((classData.correct / classData.total) * 100)
+        : 0;
+      return {
+        subject: stat.subject,
+        label: stat.label,
+        studentPercentage: stat.percentage,
+        classAverage: classAvg,
+        studentCorrect: stat.correct,
+        studentTotal: stat.total,
+        classCorrect: classData?.correct || 0,
+        classTotalQuestions: classData?.total || 0,
+        color: stat.color,
+      };
+    });
   };
 
   const getWrongQuestions = () => {

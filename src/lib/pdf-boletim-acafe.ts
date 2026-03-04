@@ -54,6 +54,7 @@ interface BuildPDFParams {
   isFirst: boolean;
   logoData: string | null;
   studentMeta?: StudentMeta;
+  allStudentAnswers?: Map<string, StudentAnswer[]>;
 }
 
 /**
@@ -150,6 +151,35 @@ const calculateClassStats = (corrections: Correction[]) => {
 };
 
 /**
+ * Calculate per-subject class averages from all students' answers
+ */
+const calculatePerSubjectClassAverages = (
+  allStudentAnswers: Map<string, StudentAnswer[]>,
+  templateQuestions: TemplateQuestion[]
+): Map<string, number> => {
+  const subjectTotals: Record<string, { correct: number; total: number }> = {};
+
+  allStudentAnswers.forEach((answers) => {
+    answers.forEach((answer) => {
+      const question = templateQuestions.find(
+        (q) => q.question_number === answer.question_number
+      );
+      const subject = question?.subject || "sem_disciplina";
+      if (subject === "sem_disciplina") return;
+      if (!subjectTotals[subject]) subjectTotals[subject] = { correct: 0, total: 0 };
+      subjectTotals[subject].total++;
+      if (answer.is_correct) subjectTotals[subject].correct++;
+    });
+  });
+
+  const averages = new Map<string, number>();
+  Object.entries(subjectTotals).forEach(([subject, data]) => {
+    averages.set(subject, data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0);
+  });
+  return averages;
+};
+
+/**
  * Parse a CSS hex color string to RGB values
  */
 const hexToRgb = (hex: string): [number, number, number] => {
@@ -165,7 +195,8 @@ const hexToRgb = (hex: string): [number, number, number] => {
 const drawBarChart = (
   doc: jsPDF,
   stats: SubjectStats[],
-  classAvg: number,
+  perSubjectAvg: Map<string, number>,
+  classAvgFallback: number,
   startX: number,
   startY: number,
   chartWidth: number,
@@ -213,15 +244,16 @@ const drawBarChart = (
       { align: "center" }
     );
 
-    // Class average bar
-    const classH = (classAvg / 100) * barAreaHeight;
+    // Class average bar (per subject)
+    const subjectAvg = perSubjectAvg.get(stat.subject) ?? classAvgFallback;
+    const classH = (subjectAvg / 100) * barAreaHeight;
     doc.setFillColor(180, 180, 195);
     doc.rect(groupX + barWidth + gap, startY + barAreaHeight - classH, barWidth, classH, "F");
 
     // Class bar label
     doc.setTextColor(120, 120, 135);
     doc.text(
-      `${classAvg.toFixed(0)}%`,
+      `${subjectAvg.toFixed(0)}%`,
       groupX + barWidth + gap + barWidth / 2,
       startY + barAreaHeight - classH - 2,
       { align: "center" }
@@ -264,6 +296,7 @@ export const buildPDFForStudent = ({
   isFirst,
   logoData,
   studentMeta,
+  allStudentAnswers,
 }: BuildPDFParams) => {
   if (!isFirst) doc.addPage();
 
@@ -271,6 +304,9 @@ export const buildPDFForStudent = ({
   const stats = calculateSubjectStatsFromAnswers(answers, templateQuestions);
   const wrong = getWrongQuestionsFromAnswers(answers, templateQuestions);
   const classStats = calculateClassStats(allCorrections);
+  const perSubjectAvg = allStudentAnswers
+    ? calculatePerSubjectClassAverages(allStudentAnswers, templateQuestions)
+    : new Map<string, number>();
   const totalCorrect = answers.filter((a) => a.is_correct).length;
   const totalQuestions = answers.length;
 
@@ -368,7 +404,7 @@ export const buildPDFForStudent = ({
   doc.text("Desempenho por Disciplina vs Média da Turma", 14, yPos);
   doc.setFont("helvetica", "normal");
   yPos += 5;
-  yPos = drawBarChart(doc, stats, classStats.mean, 20, yPos, pageWidth - 40, 75);
+  yPos = drawBarChart(doc, stats, perSubjectAvg, classStats.mean, 20, yPos, pageWidth - 40, 75);
 
   // ===== SUBJECT TABLE =====
   yPos += 3;

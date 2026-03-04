@@ -199,13 +199,12 @@ const drawBarChart = (
 
     // Student bar
     const studentH = (stat.percentage / 100) * barAreaHeight;
-    const [r, g, b] = hexToRgb(stat.color);
-    doc.setFillColor(r, g, b);
+    doc.setFillColor(22, 163, 74);
     doc.rect(groupX, startY + barAreaHeight - studentH, barWidth, studentH, "F");
 
     // Student bar label
     doc.setFontSize(7);
-    doc.setTextColor(r, g, b);
+    doc.setTextColor(22, 163, 74);
     doc.setFont("helvetica", "bold");
     doc.text(
       `${stat.correct}/${stat.total}`,

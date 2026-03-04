@@ -287,6 +287,17 @@ const BoletimAcafe = () => {
     const logoData = await loadLogoBase64();
     const studentRanking = calculateRankingFor(selectedCorrection);
 
+    // Build allStudentAnswers map for per-subject class averages
+    const allStudentAnswersMap = new Map<string, any[]>();
+    for (const corr of allCorrections) {
+      if (corr.id === selectedCorrection) {
+        allStudentAnswersMap.set(corr.id, studentAnswers);
+      } else {
+        const ans = await loadAnswersForCorrection(corr.id);
+        allStudentAnswersMap.set(corr.id, ans);
+      }
+    }
+
     buildPDFForStudent({
       doc,
       student: selectedStudent,
@@ -297,6 +308,7 @@ const BoletimAcafe = () => {
       isFirst: true,
       logoData,
       studentMeta: studentsMetaMap[selectedStudent.student_name],
+      allStudentAnswers: allStudentAnswersMap,
     });
 
     doc.save(`boletim_${selectedStudent.student_name.replace(/\s+/g, "_")}_ACAFE.pdf`);
@@ -416,9 +428,18 @@ const BoletimAcafe = () => {
       const logoData = await loadLogoBase64();
       const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
 
+      // Pre-load all answers for per-subject class averages
+      const allStudentAnswersMap = new Map<string, any[]>();
+      const allAnswersArray: any[][] = [];
+      for (const correction of allCorrections) {
+        const answers = await loadAnswersForCorrection(correction.id);
+        allStudentAnswersMap.set(correction.id, answers);
+        allAnswersArray.push(answers);
+      }
+
       for (let i = 0; i < allCorrections.length; i++) {
         const correction = allCorrections[i];
-        const answers = await loadAnswersForCorrection(correction.id);
+        const answers = allStudentAnswersMap.get(correction.id) || [];
         const studentRanking = sorted.findIndex((c) => c.id === correction.id) + 1;
 
         buildPDFForStudent({
@@ -431,6 +452,7 @@ const BoletimAcafe = () => {
           isFirst: i === 0,
           logoData,
           studentMeta: studentsMetaMap[correction.student_name],
+          allStudentAnswers: allStudentAnswersMap,
         });
       }
 
@@ -449,6 +471,17 @@ const BoletimAcafe = () => {
     const sorted = [...allCorrections].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
     const studentRanking = sorted.findIndex((c) => c.id === correction.id) + 1;
 
+    // Build allStudentAnswers map for per-subject averages
+    const allStudentAnswersMap = new Map<string, any[]>();
+    for (const corr of allCorrections) {
+      if (corr.id === correction.id) {
+        allStudentAnswersMap.set(corr.id, answers);
+      } else {
+        const ans = await loadAnswersForCorrection(corr.id);
+        allStudentAnswersMap.set(corr.id, ans);
+      }
+    }
+
     buildPDFForStudent({
       doc,
       student: correction,
@@ -459,6 +492,7 @@ const BoletimAcafe = () => {
       isFirst: true,
       logoData,
       studentMeta: studentsMetaMap[correction.student_name],
+      allStudentAnswers: allStudentAnswersMap,
     });
 
     // Get base64 without data URI prefix

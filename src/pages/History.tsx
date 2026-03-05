@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Clock, Trash2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Clock, Trash2, RefreshCw, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
 import { recalculateByTemplate } from "@/lib/recalculate";
+import AddStudentToExamDialog from "@/components/student/AddStudentToExamDialog";
 
 interface CorrectionWithTemplate {
   id: string;
@@ -32,6 +33,8 @@ const History = () => {
   const [corrections, setCorrections] = useState<CorrectionWithTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState<string | null>(null);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [allTemplates, setAllTemplates] = useState<{ id: string; name: string; exam_type: string; total_questions: number }[]>([]);
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -43,7 +46,15 @@ const History = () => {
       navigate("/auth");
       return;
     }
-    await loadCorrections();
+    await Promise.all([loadCorrections(), loadTemplates()]);
+  };
+
+  const loadTemplates = async () => {
+    const { data } = await supabase
+      .from("templates")
+      .select("id, name, exam_type, total_questions")
+      .order("name");
+    setAllTemplates(data || []);
   };
 
   const loadCorrections = async () => {
@@ -101,7 +112,11 @@ const History = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <FlemingLogo size="sm" />
-          <h1 className="text-xl font-bold">Histórico de Correções</h1>
+          <h1 className="text-xl font-bold flex-1">Histórico de Correções</h1>
+          <Button size="sm" onClick={() => setShowAddStudent(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Adicionar Aluno à Prova
+          </Button>
         </div>
       </header>
 
@@ -215,6 +230,13 @@ const History = () => {
           )}
         </div>
       </main>
+
+      <AddStudentToExamDialog
+        open={showAddStudent}
+        onOpenChange={setShowAddStudent}
+        templates={allTemplates}
+        onSuccess={loadCorrections}
+      />
     </div>
   );
 };

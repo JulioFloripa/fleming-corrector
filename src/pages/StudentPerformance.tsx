@@ -10,6 +10,8 @@ import StudentListPaginated from "@/components/student/StudentListPaginated";
 import PerformanceOverview from "@/components/student/PerformanceOverview";
 import PerformanceChart from "@/components/student/PerformanceChart";
 import ExamsDetailTable from "@/components/student/ExamsDetailTable";
+import SubjectPerformanceCards from "@/components/student/SubjectPerformanceCards";
+import PrintPerformanceButton from "@/components/student/PrintPerformanceButton";
 import {
   calculatePerformanceStats,
   prepareChartData,

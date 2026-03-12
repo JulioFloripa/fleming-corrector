@@ -118,3 +118,40 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Print styles for A4 performance report */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print\:hidden,
+  header,
+  nav {
+    display: none !important;
+  }
+
+  #print-area {
+    padding: 0 !important;
+  }
+
+  #print-area .grid {
+    break-inside: avoid;
+  }
+
+  #print-area > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 12px;
+  }
+
+  .recharts-wrapper {
+    break-inside: avoid !important;
+  }
+}

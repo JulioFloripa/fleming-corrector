@@ -208,19 +208,33 @@ const StudentPerformance = () => {
 
           {selectedStudentId && studentExams.length > 0 && (
             <>
-              <Button variant="outline" onClick={handleBackToList}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar para lista
-              </Button>
-
-              <PerformanceOverview stats={stats} studentName={studentName} />
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <PerformanceChart data={chartData} type="bar" />
-                <PerformanceChart data={chartData} type="line" />
+              <div className="flex gap-2 print:hidden">
+                <Button variant="outline" onClick={handleBackToList}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar para lista
+                </Button>
+                <PrintPerformanceButton />
               </div>
 
-              <ExamsDetailTable exams={tableData} />
+              <div id="print-area">
+                <PerformanceOverview stats={stats} studentName={studentName} />
+
+                <div className="grid gap-6 lg:grid-cols-2 mt-6">
+                  <PerformanceChart data={chartData} type="bar" />
+                  <PerformanceChart data={chartData} type="line" />
+                </div>
+
+                <div className="mt-6">
+                  <SubjectPerformanceCards
+                    correctionIds={studentExams.map(e => e.id)}
+                    examNames={studentExams.map((e, i) => e.templates?.name || `Prova ${i + 1}`)}
+                  />
+                </div>
+
+                <div className="mt-6">
+                  <ExamsDetailTable exams={tableData} />
+                </div>
+              </div>
             </>
           )}
         </div>

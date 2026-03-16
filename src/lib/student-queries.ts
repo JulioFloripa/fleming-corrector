@@ -205,6 +205,7 @@ export const getStudentExams = async (studentName: string) => {
         max_score,
         percentage,
         created_at,
+        essay_score,
         template_id,
         templates (
           id,

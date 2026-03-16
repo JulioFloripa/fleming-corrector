@@ -59,6 +59,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [questions, setQuestions] = useState<TemplateQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [essayScore, setEssayScore] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -67,6 +68,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
       setStep("select");
       setSelectedStudent(null);
       setAnswers({});
+      setEssayScore("");
       setSelectedTemplateId(preselectedTemplateId || "");
     }
   }, [open, preselectedTemplateId]);
@@ -161,6 +163,9 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
         });
       }
 
+      // Parse essay score
+      const parsedEssay = essayScore.trim() !== "" ? Math.min(10, Math.max(0, parseFloat(essayScore.replace(",", ".")))) : null;
+
       // Create correction
       const { data: correction, error: corrError } = await supabase
         .from("corrections")
@@ -173,6 +178,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
           max_score: maxScore,
           percentage: maxScore > 0 ? (totalScore / maxScore) * 100 : 0,
           status: "completed",
+          essay_score: isNaN(parsedEssay as number) ? null : parsedEssay,
         })
         .select("id")
         .single();
@@ -342,6 +348,20 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="mt-4 p-3 border rounded-md bg-muted/50">
+                <Label className="text-sm font-medium">Redação (nota de 0 a 10)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={essayScore}
+                  onChange={(e) => setEssayScore(e.target.value)}
+                  placeholder="Ex: 7.5"
+                  className="mt-1 h-8 w-32 text-center"
+                />
               </div>
             </ScrollArea>
           </div>

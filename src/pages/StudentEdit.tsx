@@ -19,6 +19,7 @@ interface StudentExam {
   max_score: number | null;
   percentage: number | null;
   created_at: string | null;
+  essay_score: number | null;
   templates: {
     id: string;
     name: string;
@@ -240,6 +241,7 @@ const StudentEdit = () => {
               examName={selectedExam.templates?.name || "Prova"}
               studentName={selectedExam.student_name}
               answers={examAnswers}
+              essayScore={selectedExam.essay_score}
               onBack={handleBackToExams}
               onSaveSuccess={handleSaveSuccess}
             />

@@ -7,6 +7,7 @@ export const ACAFE_SUBJECTS = [
   { value: "fisica", label: "Física" },
   { value: "quimica", label: "Química" },
   { value: "biologia", label: "Biologia" },
+  { value: "redacao", label: "Redação" },
 ] as const;
 
 export type AcafeSubject = typeof ACAFE_SUBJECTS[number]["value"];
@@ -26,6 +27,7 @@ export const getSubjectColor = (value: string): string => {
     fisica: "#7c3aed",
     quimica: "#0891b2",
     biologia: "#65a30d",
+    redacao: "#d97706",
   };
   return colors[value] || "#6b7280";
 };

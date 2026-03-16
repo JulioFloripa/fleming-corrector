@@ -88,6 +88,7 @@ const Correct = () => {
     for (let i = 1; i <= template.total_questions; i++) {
       headers.push(`Questão ${String(i).padStart(2, '0')}`);
     }
+    headers.push("Redação");
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Respostas");
@@ -337,6 +338,10 @@ const Correct = () => {
               const { error: answerError } = await supabase.from("student_answers").insert(answersToInsert);
               if (answerError) throw answerError;
 
+              // Ler nota da redação (0 a 10)
+              const rawEssay = row["Redação"] || row["Redacao"] || row["redação"] || row["redacao"] || row["REDAÇÃO"] || row["REDACAO"];
+              const essayScore = rawEssay != null && rawEssay !== "" ? Math.min(10, Math.max(0, parseFloat(String(rawEssay).replace(",", ".")))) : null;
+
               // Atualizar correção com pontuação
               const { error: finalError } = await supabase
                 .from("corrections")
@@ -345,6 +350,7 @@ const Correct = () => {
                   max_score: maxScore,
                   percentage: maxScore > 0 ? (totalScore / maxScore) * 100 : 0,
                   status: "completed",
+                  essay_score: isNaN(essayScore as number) ? null : essayScore,
                 })
                 .eq("id", correctionId);
 

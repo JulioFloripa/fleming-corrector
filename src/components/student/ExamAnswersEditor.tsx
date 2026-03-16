@@ -107,6 +107,28 @@ const ExamAnswersEditor = ({
     }
   };
 
+  const handleSaveEssay = async () => {
+    setSaving(true);
+    try {
+      const parsed = essayScoreValue.trim() !== "" 
+        ? Math.min(10, Math.max(0, parseFloat(essayScoreValue.replace(",", "."))))
+        : null;
+      const { error } = await supabase
+        .from("corrections")
+        .update({ essay_score: isNaN(parsed as number) ? null : parsed })
+        .eq("id", correctionId);
+      if (error) throw error;
+      setEssayEditing(false);
+      toast({ title: "Nota da redação atualizada!" });
+      onSaveSuccess();
+    } catch (error) {
+      console.error("Erro ao salvar redação:", error);
+      toast({ title: "Erro ao salvar", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const recalculateCorrection = async () => {
     try {
       // Buscar todas as respostas atualizadas

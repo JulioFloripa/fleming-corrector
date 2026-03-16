@@ -163,6 +163,9 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
         });
       }
 
+      // Parse essay score
+      const parsedEssay = essayScore.trim() !== "" ? Math.min(10, Math.max(0, parseFloat(essayScore.replace(",", ".")))) : null;
+
       // Create correction
       const { data: correction, error: corrError } = await supabase
         .from("corrections")
@@ -175,6 +178,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
           max_score: maxScore,
           percentage: maxScore > 0 ? (totalScore / maxScore) * 100 : 0,
           status: "completed",
+          essay_score: isNaN(parsedEssay as number) ? null : parsedEssay,
         })
         .select("id")
         .single();

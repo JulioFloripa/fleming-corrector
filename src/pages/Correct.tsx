@@ -88,6 +88,7 @@ const Correct = () => {
     for (let i = 1; i <= template.total_questions; i++) {
       headers.push(`Questão ${String(i).padStart(2, '0')}`);
     }
+    headers.push("Redação");
 
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet("Respostas");

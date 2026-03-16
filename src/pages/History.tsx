@@ -35,6 +35,7 @@ const History = () => {
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState<string | null>(null);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [selectedRecalcTemplate, setSelectedRecalcTemplate] = useState<string>("");
   const [allTemplates, setAllTemplates] = useState<{ id: string; name: string; exam_type: string; total_questions: number }[]>([]);
 
   useEffect(() => {

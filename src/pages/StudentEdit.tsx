@@ -241,6 +241,7 @@ const StudentEdit = () => {
               examName={selectedExam.templates?.name || "Prova"}
               studentName={selectedExam.student_name}
               answers={examAnswers}
+              essayScore={selectedExam.essay_score}
               onBack={handleBackToExams}
               onSaveSuccess={handleSaveSuccess}
             />

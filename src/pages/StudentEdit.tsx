@@ -19,6 +19,7 @@ interface StudentExam {
   max_score: number | null;
   percentage: number | null;
   created_at: string | null;
+  essay_score: number | null;
   templates: {
     id: string;
     name: string;

@@ -217,6 +217,17 @@ const StudentPerformance = () => {
               </div>
 
               <div id="print-area">
+                {/* Print-only header with Fleming branding */}
+                <div className="print-header hidden items-center gap-3 mb-4 pb-3 border-b-2 border-primary">
+                  <img src={flemingLogo} alt="Fleming" className="h-10 w-auto" />
+                  <div>
+                    <h2 className="text-xl font-bold text-primary">Fleming Medicina</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Relatório de Desempenho — {studentName} — {new Date().toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                </div>
+
                 <PerformanceOverview stats={stats} studentName={studentName} />
 
                 <div className="grid gap-6 lg:grid-cols-2 mt-6">

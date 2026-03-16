@@ -33,6 +33,7 @@ const ExamAnswersEditor = ({
   examName,
   studentName,
   answers: initialAnswers,
+  essayScore: initialEssayScore,
   onBack,
   onSaveSuccess,
 }: ExamAnswersEditorProps) => {
@@ -41,6 +42,10 @@ const ExamAnswersEditor = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [essayScoreValue, setEssayScoreValue] = useState<string>(
+    initialEssayScore != null ? String(initialEssayScore) : ""
+  );
+  const [essayEditing, setEssayEditing] = useState(false);
 
   const handleEdit = (answer: StudentAnswer) => {
     setEditingId(answer.id);

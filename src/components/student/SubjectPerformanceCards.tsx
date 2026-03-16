@@ -149,7 +149,7 @@ const SubjectPerformanceCards = ({ correctionIds, examNames }: SubjectPerformanc
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" style={{ breakBefore: 'page' }}>
       <h3 className="text-lg font-semibold">Desempenho por Disciplina</h3>
       <div className="subject-cards-grid grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {subjectData.map((subject, sIdx) => (

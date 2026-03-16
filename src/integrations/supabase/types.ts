@@ -17,6 +17,7 @@ export type Database = {
       corrections: {
         Row: {
           created_at: string | null
+          essay_score: number | null
           id: string
           max_score: number | null
           percentage: number | null
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          essay_score?: number | null
           id?: string
           max_score?: number | null
           percentage?: number | null
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          essay_score?: number | null
           id?: string
           max_score?: number | null
           percentage?: number | null

@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Clock, Trash2, RefreshCw, UserPlus } from "lucide-react";
+import { ArrowLeft, Clock, Trash2, RefreshCw, UserPlus, ChevronDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
 import { recalculateByTemplate } from "@/lib/recalculate";
@@ -34,6 +35,7 @@ const History = () => {
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState<string | null>(null);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [selectedRecalcTemplate, setSelectedRecalcTemplate] = useState<string>("");
   const [allTemplates, setAllTemplates] = useState<{ id: string; name: string; exam_type: string; total_questions: number }[]>([]);
 
   useEffect(() => {
@@ -153,23 +155,29 @@ const History = () => {
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
                   {uniqueTemplates.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {uniqueTemplates.map(t => (
-                        <Button
-                          key={t.id}
-                          variant="outline"
-                          size="sm"
-                          disabled={recalculating === t.id}
-                          onClick={() => handleRecalculate(t.id, t.name)}
-                        >
-                          {recalculating === t.id ? (
-                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                          )}
-                          Recalcular: {t.name}
-                        </Button>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                        <SelectTrigger className="w-[280px]">
+                          <SelectValue placeholder="Selecione um gabarito..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {uniqueTemplates.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                        onClick={() => {
+                          const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
+                          if (t) handleRecalculate(t.id, t.name);
+                        }}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
+                        Recalcular
+                      </Button>
                     </div>
                   )}
                 </div>

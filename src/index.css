@@ -154,6 +154,25 @@ All colors MUST be HSL.
     margin-bottom: 8px;
   }
 
+  /* Overview cards: 3 per row in print */
+  #print-area .overview-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* Charts: 2 per row in print */
+  #print-area .charts-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  #print-area .charts-grid > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
   /* Subject cards: 3 per row in print */
   #print-area .subject-cards-grid {
     display: grid !important;

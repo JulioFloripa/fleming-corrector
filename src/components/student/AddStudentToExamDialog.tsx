@@ -59,6 +59,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [questions, setQuestions] = useState<TemplateQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [essayScore, setEssayScore] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {

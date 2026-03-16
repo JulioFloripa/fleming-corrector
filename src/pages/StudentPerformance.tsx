@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
+import flemingLogo from "@/assets/fleming-logo.png";
 import StudentSearchAdvanced from "@/components/student/StudentSearchAdvanced";
 import StudentListPaginated from "@/components/student/StudentListPaginated";
 import PerformanceOverview from "@/components/student/PerformanceOverview";

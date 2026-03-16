@@ -155,23 +155,29 @@ const History = () => {
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
                   {uniqueTemplates.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {uniqueTemplates.map(t => (
-                        <Button
-                          key={t.id}
-                          variant="outline"
-                          size="sm"
-                          disabled={recalculating === t.id}
-                          onClick={() => handleRecalculate(t.id, t.name)}
-                        >
-                          {recalculating === t.id ? (
-                            <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4 mr-1" />
-                          )}
-                          Recalcular: {t.name}
-                        </Button>
-                      ))}
+                    <div className="flex items-center gap-2">
+                      <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                        <SelectTrigger className="w-[280px]">
+                          <SelectValue placeholder="Selecione um gabarito..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {uniqueTemplates.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                        onClick={() => {
+                          const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
+                          if (t) handleRecalculate(t.id, t.name);
+                        }}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
+                        Recalcular
+                      </Button>
                     </div>
                   )}
                 </div>

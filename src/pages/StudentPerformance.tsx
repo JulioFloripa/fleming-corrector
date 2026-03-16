@@ -231,7 +231,7 @@ const StudentPerformance = () => {
 
                 <PerformanceOverview stats={stats} studentName={studentName} />
 
-                <div className="grid gap-6 lg:grid-cols-2 mt-6">
+                <div className="charts-grid grid gap-6 lg:grid-cols-2 mt-6">
                   <PerformanceChart data={chartData} type="bar" />
                   <PerformanceChart data={chartData} type="line" />
                 </div>

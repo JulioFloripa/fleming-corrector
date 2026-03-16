@@ -167,9 +167,9 @@ const ExamAnswersEditor = ({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-4 p-4 bg-muted rounded-lg flex items-center justify-between">
+        <div className="mb-4 p-4 bg-muted rounded-lg flex items-center justify-between flex-wrap gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Pontuação Atual</p>
+            <p className="text-sm text-muted-foreground">Pontuação Objetivas</p>
             <p className="text-2xl font-bold">
               {totalScore.toFixed(1)} / {maxScore.toFixed(1)}
             </p>
@@ -177,6 +177,43 @@ const ExamAnswersEditor = ({
           <div>
             <p className="text-sm text-muted-foreground">Percentual</p>
             <p className="text-2xl font-bold">{percentage.toFixed(1)}%</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Redação (0-10)</p>
+            <div className="flex items-center gap-2 mt-1">
+              {essayEditing ? (
+                <>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.1"
+                    value={essayScoreValue}
+                    onChange={(e) => setEssayScoreValue(e.target.value)}
+                    className="w-20 h-8 text-center"
+                    autoFocus
+                  />
+                  <Button size="sm" onClick={handleSaveEssay} disabled={saving}>
+                    <Save className="h-3 w-3" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    setEssayEditing(false);
+                    setEssayScoreValue(initialEssayScore != null ? String(initialEssayScore) : "");
+                  }}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-bold">
+                    {essayScoreValue !== "" ? parseFloat(essayScoreValue).toFixed(1) : "-"}
+                  </p>
+                  <Button size="sm" variant="ghost" onClick={() => setEssayEditing(true)}>
+                    Editar
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

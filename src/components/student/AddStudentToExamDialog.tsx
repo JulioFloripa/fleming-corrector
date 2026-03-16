@@ -349,6 +349,20 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
                   );
                 })}
               </div>
+
+              <div className="mt-4 p-3 border rounded-md bg-muted/50">
+                <Label className="text-sm font-medium">Redação (nota de 0 a 10)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={essayScore}
+                  onChange={(e) => setEssayScore(e.target.value)}
+                  placeholder="Ex: 7.5"
+                  className="mt-1 h-8 w-32 text-center"
+                />
+              </div>
             </ScrollArea>
           </div>
         )}

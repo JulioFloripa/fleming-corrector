@@ -23,6 +23,7 @@ interface ExamAnswersEditorProps {
   examName: string;
   studentName: string;
   answers: StudentAnswer[];
+  essayScore?: number | null;
   onBack: () => void;
   onSaveSuccess: () => void;
 }

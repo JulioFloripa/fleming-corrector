@@ -123,18 +123,23 @@ All colors MUST be HSL.
 @media print {
   @page {
     size: A4 portrait;
-    margin: 15mm;
+    margin: 12mm 10mm;
   }
 
   body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-size: 11px;
   }
 
   .print\:hidden,
   header,
   nav {
     display: none !important;
+  }
+
+  .print-header {
+    display: flex !important;
   }
 
   #print-area {
@@ -146,12 +151,29 @@ All colors MUST be HSL.
   }
 
   #print-area > div {
-    break-inside: avoid;
-    page-break-inside: avoid;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
 
+  /* Subject cards: 3 per row in print */
+  #print-area .subject-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  #print-area .subject-cards-grid > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Smaller charts in print */
   .recharts-wrapper {
     break-inside: avoid !important;
+  }
+
+  /* Compact cards in print */
+  #print-area .card {
+    box-shadow: none !important;
+    border: 1px solid hsl(0 0% 85%) !important;
   }
 }

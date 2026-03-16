@@ -151,7 +151,7 @@ const SubjectPerformanceCards = ({ correctionIds, examNames }: SubjectPerformanc
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Desempenho por Disciplina</h3>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="subject-cards-grid grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {subjectData.map((subject, sIdx) => (
           <Card key={subject.subject}>
             <CardHeader className="pb-2 pt-4 px-4">

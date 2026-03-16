@@ -68,6 +68,7 @@ const AddStudentToExamDialog = ({ open, onOpenChange, templates, onSuccess, pres
       setStep("select");
       setSelectedStudent(null);
       setAnswers({});
+      setEssayScore("");
       setSelectedTemplateId(preselectedTemplateId || "");
     }
   }, [open, preselectedTemplateId]);

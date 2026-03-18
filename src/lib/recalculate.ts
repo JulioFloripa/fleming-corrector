@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { calculateSummationScore, calculateOpenNumericScore } from "@/lib/ufsc-scoring";
 
 export async function recalculateByTemplate(templateId: string): Promise<{ success: boolean; correctionsUpdated: number; error?: string }> {
   // 1. Fetch updated template questions
@@ -74,9 +75,39 @@ export async function recalculateByTemplate(templateId: string): Promise<{ succe
       const question = questionMap.get(answer.question_number);
       if (!question) continue;
 
-      const isCorrect = answer.student_answer?.toUpperCase() === question.correct_answer.toUpperCase();
-      const pointsEarned = isCorrect ? (question.points ?? 1) : 0;
-      maxScore += question.points ?? 1;
+      const questionType = (question as any).question_type || "objective";
+      const numPropositions = (question as any).num_propositions || 5;
+      let isCorrect = false;
+      let pointsEarned = 0;
+
+      if (questionType === "summation") {
+        const studentSum = parseInt(answer.student_answer || "0") || 0;
+        const correctSum = parseInt(question.correct_answer || "0") || 0;
+        const result = calculateSummationScore(studentSum, correctSum, numPropositions, question.points ?? 1);
+        pointsEarned = result.score;
+        isCorrect = pointsEarned > 0;
+        maxScore += result.maxScore;
+      } else if (questionType === "open_numeric") {
+        const studentNum = answer.student_answer != null ? parseInt(answer.student_answer) : null;
+        const correctNum = parseInt(question.correct_answer || "0") || 0;
+        const result = calculateOpenNumericScore(studentNum, correctNum, question.points ?? 1);
+        pointsEarned = result.score;
+        isCorrect = result.isCorrect;
+        maxScore += result.maxScore;
+      } else if (questionType === "discursive") {
+        // Discursive: points_earned is manually set, don't override
+        pointsEarned = answer.points_earned || 0;
+        isCorrect = pointsEarned > 0;
+        maxScore += question.points ?? 5;
+        totalScore += pointsEarned;
+        continue; // Skip the update below for discursive
+      } else {
+        // Objective
+        isCorrect = answer.student_answer?.toUpperCase() === question.correct_answer.toUpperCase();
+        pointsEarned = isCorrect ? (question.points ?? 1) : 0;
+        maxScore += question.points ?? 1;
+      }
+
       totalScore += pointsEarned;
 
       // Update student_answer record

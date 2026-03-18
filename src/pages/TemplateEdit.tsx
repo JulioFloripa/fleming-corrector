@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, RefreshCw } from "lucide-react";
 import { recalculateByTemplate } from "@/lib/recalculate";
 import { EXAM_PRESETS, generatePresetQuestions } from "@/lib/exam-presets";
+import { QUESTION_TYPE_LABELS, type QuestionType } from "@/lib/ufsc-scoring";
+import SummationAnswerEditor from "@/components/template/SummationAnswerEditor";
 
 interface TemplateQuestion {
   id: string;
@@ -20,6 +23,8 @@ interface TemplateQuestion {
   subject: string | null;
   topic: string | null;
   language_variant: string | null;
+  question_type: string;
+  num_propositions: number | null;
 }
 
 interface DisciplineOption {
@@ -38,6 +43,7 @@ const TemplateEdit = () => {
   const [loading, setLoading] = useState(true);
   const [showRecalcDialog, setShowRecalcDialog] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+
   useEffect(() => {
     loadTemplate();
     loadDisciplines();
@@ -89,7 +95,12 @@ const TemplateEdit = () => {
         description: questionsError.message,
       });
     } else if (questionsData && questionsData.length > 0) {
-      setQuestions(questionsData.map(q => ({ ...q, language_variant: (q as any).language_variant ?? null })));
+      setQuestions(questionsData.map(q => ({
+        ...q,
+        language_variant: (q as any).language_variant ?? null,
+        question_type: (q as any).question_type ?? "objective",
+        num_propositions: (q as any).num_propositions ?? null,
+      })));
     } else {
       // Use preset if available, otherwise create empty questions
       const preset = EXAM_PRESETS[templateData.exam_type];
@@ -110,6 +121,8 @@ const TemplateEdit = () => {
             subject: null,
             topic: null,
             language_variant: null,
+            question_type: "objective",
+            num_propositions: null,
           })
         );
         setQuestions(emptyQuestions);
@@ -137,6 +150,8 @@ const TemplateEdit = () => {
       subject: q.subject,
       topic: q.topic,
       language_variant: q.language_variant,
+      question_type: q.question_type,
+      num_propositions: q.num_propositions,
     }));
 
     const { error } = await supabase.from("template_questions").insert(questionsToInsert);
@@ -194,6 +209,82 @@ const TemplateEdit = () => {
     return disc?.topics || [];
   };
 
+  const getQuestionTypeBadge = (type: string) => {
+    switch (type) {
+      case "summation":
+        return <Badge variant="secondary" className="text-[10px] px-1">SOM</Badge>;
+      case "open_numeric":
+        return <Badge variant="outline" className="text-[10px] px-1">NUM</Badge>;
+      case "discursive":
+        return <Badge className="text-[10px] px-1 bg-accent text-accent-foreground">DISC</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const renderAnswerInput = (question: TemplateQuestion, index: number) => {
+    const isVariant = question.language_variant != null;
+
+    switch (question.question_type) {
+      case "summation":
+        return (
+          <div className="flex items-center gap-1">
+            {isVariant && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {question.language_variant === "Inglês" ? "🇬🇧" : "🇪🇸"}
+              </span>
+            )}
+            <SummationAnswerEditor
+              value={question.correct_answer}
+              numPropositions={question.num_propositions || 5}
+              onChange={(newSum) => updateQuestion(index, { correct_answer: newSum })}
+            />
+          </div>
+        );
+      case "open_numeric":
+        return (
+          <Input
+            className="h-8 w-20 font-mono"
+            type="number"
+            min="0"
+            max="99"
+            value={question.correct_answer}
+            onChange={(e) => {
+              const val = Math.min(99, Math.max(0, parseInt(e.target.value) || 0));
+              updateQuestion(index, { correct_answer: String(val) });
+            }}
+          />
+        );
+      case "discursive":
+        return (
+          <span className="text-xs text-muted-foreground italic">Manual (0-5)</span>
+        );
+      default:
+        return (
+          <div className="flex items-center gap-1">
+            {isVariant && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {question.language_variant === "Inglês" ? "🇬🇧" : "🇪🇸"}
+              </span>
+            )}
+            <Select
+              value={question.correct_answer}
+              onValueChange={(value) => updateQuestion(index, { correct_answer: value })}
+            >
+              <SelectTrigger className="h-8 w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(EXAM_PRESETS[template?.exam_type]?.alternatives || ["A", "B", "C", "D", "E"]).map((alt) => (
+                  <SelectItem key={alt} value={alt}>{alt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        );
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -201,6 +292,8 @@ const TemplateEdit = () => {
       </div>
     );
   }
+
+  const isUfscType = template?.exam_type === "ufsc";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -234,10 +327,16 @@ const TemplateEdit = () => {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">#</th>
+                  {isUfscType && (
+                    <th className="text-left py-2 px-2 font-medium text-muted-foreground w-28">Tipo</th>
+                  )}
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground w-24">Resposta</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Disciplina</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground">Conteúdo</th>
                   <th className="text-left py-2 px-2 font-medium text-muted-foreground w-20">Pontos</th>
+                  {isUfscType && (
+                    <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">Props</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -251,29 +350,46 @@ const TemplateEdit = () => {
                       className={`border-b last:border-0 hover:bg-muted/50 ${isVariant ? 'bg-accent/20' : ''} ${isSecondVariant ? 'border-b-2 border-b-border' : ''}`}
                     >
                       <td className="py-2 px-2 font-medium">
-                        {isSecondVariant ? "" : question.question_number}
-                      </td>
-                      <td className="py-2 px-2">
                         <div className="flex items-center gap-1">
-                          {isVariant && (
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {question.language_variant === "Inglês" ? "🇬🇧" : "🇪🇸"}
-                            </span>
-                          )}
+                          {isSecondVariant ? "" : question.question_number}
+                          {!isUfscType && getQuestionTypeBadge(question.question_type)}
+                        </div>
+                      </td>
+                      {isUfscType && (
+                        <td className="py-2 px-2">
                           <Select
-                            value={question.correct_answer}
-                            onValueChange={(value) => updateQuestion(index, { correct_answer: value })}
+                            value={question.question_type}
+                            onValueChange={(value) => {
+                              const updates: Partial<TemplateQuestion> = { question_type: value };
+                              if (value === "summation") {
+                                updates.num_propositions = question.num_propositions || 5;
+                                updates.correct_answer = "0";
+                              } else if (value === "open_numeric") {
+                                updates.correct_answer = "0";
+                                updates.num_propositions = null;
+                              } else if (value === "discursive") {
+                                updates.correct_answer = "0";
+                                updates.num_propositions = null;
+                              } else {
+                                updates.correct_answer = "A";
+                                updates.num_propositions = null;
+                              }
+                              updateQuestion(index, updates);
+                            }}
                           >
-                            <SelectTrigger className="h-8 w-20">
+                            <SelectTrigger className="h-8 text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {(EXAM_PRESETS[template?.exam_type]?.alternatives || ["A", "B", "C", "D", "E"]).map((alt) => (
-                                <SelectItem key={alt} value={alt}>{alt}</SelectItem>
+                              {(Object.entries(QUESTION_TYPE_LABELS) as [QuestionType, string][]).map(([key, label]) => (
+                                <SelectItem key={key} value={key}>{label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
-                        </div>
+                        </td>
+                      )}
+                      <td className="py-2 px-2">
+                        {renderAnswerInput(question, index)}
                       </td>
                       <td className="py-2 px-2">
                         {isVariant ? (
@@ -346,6 +462,25 @@ const TemplateEdit = () => {
                           />
                         )}
                       </td>
+                      {isUfscType && (
+                        <td className="py-2 px-2">
+                          {question.question_type === "summation" ? (
+                            <Input
+                              className="h-8 w-16"
+                              type="number"
+                              min="2"
+                              max="7"
+                              value={question.num_propositions || 5}
+                              onChange={(e) => {
+                                const val = Math.min(7, Math.max(2, parseInt(e.target.value) || 5));
+                                updateQuestion(index, { num_propositions: val });
+                              }}
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

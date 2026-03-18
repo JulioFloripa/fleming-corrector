@@ -227,8 +227,10 @@ export type Database = {
           created_at: string | null
           id: string
           language_variant: string | null
+          num_propositions: number | null
           points: number | null
           question_number: number
+          question_type: string
           subject: string | null
           template_id: string
           topic: string | null
@@ -238,8 +240,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           language_variant?: string | null
+          num_propositions?: number | null
           points?: number | null
           question_number: number
+          question_type?: string
           subject?: string | null
           template_id: string
           topic?: string | null
@@ -249,8 +253,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           language_variant?: string | null
+          num_propositions?: number | null
           points?: number | null
           question_number?: number
+          question_type?: string
           subject?: string | null
           template_id?: string
           topic?: string | null

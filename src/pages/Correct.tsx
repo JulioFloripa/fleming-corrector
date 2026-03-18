@@ -319,11 +319,40 @@ const Correct = () => {
                 const paddedNum = String(qNum).padStart(2, '0');
                 const rawAnswer = row[`Questão ${paddedNum}`] || row[`questão ${paddedNum}`] || row[`q${qNum}`] || row[`Q${qNum}`];
                 const studentAnswer = rawAnswer?.toString().trim().substring(0, 50) || null;
-                const isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
-                const pointsEarned = isCorrect ? Number(question.points) : 0;
+                
+                const questionType = (question as any).question_type || "objective";
+                const numPropositions = (question as any).num_propositions || 5;
+                let isCorrect = false;
+                let pointsEarned = 0;
+
+                if (questionType === "summation") {
+                  const studentSum = parseInt(studentAnswer || "0") || 0;
+                  const correctSum = parseInt(question.correct_answer || "0") || 0;
+                  const result = calculateSummationScore(studentSum, correctSum, numPropositions, Number(question.points));
+                  pointsEarned = result.score;
+                  isCorrect = pointsEarned > 0;
+                  maxScore += result.maxScore;
+                } else if (questionType === "open_numeric") {
+                  const studentNum = studentAnswer != null ? parseInt(studentAnswer) : null;
+                  const correctNum = parseInt(question.correct_answer || "0") || 0;
+                  const result = calculateOpenNumericScore(studentNum, correctNum, Number(question.points));
+                  pointsEarned = result.score;
+                  isCorrect = result.isCorrect;
+                  maxScore += result.maxScore;
+                } else if (questionType === "discursive") {
+                  // Discursive: read manual score from spreadsheet
+                  const discScore = studentAnswer != null ? parseFloat(studentAnswer.replace(",", ".")) : 0;
+                  pointsEarned = isNaN(discScore) ? 0 : Math.min(5, Math.max(0, discScore));
+                  isCorrect = pointsEarned > 0;
+                  maxScore += question.points ?? 5;
+                } else {
+                  // Objective
+                  isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
+                  pointsEarned = isCorrect ? Number(question.points) : 0;
+                  maxScore += Number(question.points);
+                }
 
                 totalScore += pointsEarned;
-                maxScore += Number(question.points);
 
                 answersToInsert.push({
                   correction_id: correctionId,

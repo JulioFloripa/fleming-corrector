@@ -29,6 +29,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import { calculateSummationScore, calculateOpenNumericScore } from "@/lib/ufsc-scoring";
 
 const Correct = () => {
   const navigate = useNavigate();

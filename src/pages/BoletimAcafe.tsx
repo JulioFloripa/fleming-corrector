@@ -81,6 +81,7 @@ const BoletimAcafe = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [selectedCorrection, setSelectedCorrection] = useState<string>("");
+  const [selectedCampus, setSelectedCampus] = useState<string>("all");
   const [studentAnswers, setStudentAnswers] = useState<StudentAnswer[]>([]);
   const [templateQuestions, setTemplateQuestions] = useState<TemplateQuestion[]>([]);
   const [allCorrections, setAllCorrections] = useState<Correction[]>([]);
@@ -303,7 +304,19 @@ const BoletimAcafe = () => {
     return calculateRankingFor(selectedCorrection);
   };
 
-  const selectedStudent = corrections.find((c) => c.id === selectedCorrection);
+  // Filter corrections by campus
+  const filteredCorrections = selectedCampus === "all"
+    ? corrections
+    : corrections.filter((c) => studentsMetaMap[c.student_name]?.campus === selectedCampus);
+
+  // Get unique campuses from student meta
+  const availableCampuses = [...new Set(
+    corrections
+      .map((c) => studentsMetaMap[c.student_name]?.campus)
+      .filter(Boolean)
+  )] as string[];
+
+  const selectedStudent = filteredCorrections.find((c) => c.id === selectedCorrection);
   const subjectStats = calculateSubjectStats();
   const classComparison = calculateClassComparison();
   const wrongQuestions = getWrongQuestions();
@@ -665,10 +678,10 @@ const BoletimAcafe = () => {
                 Escolha o template e o aluno para gerar o boletim, ou gere todos de uma vez
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2">
+            <CardContent className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Escolha um Simulado/Prova:</label>
-                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                <Select value={selectedTemplate} onValueChange={(val) => { setSelectedTemplate(val); setSelectedCorrection(""); setSelectedCampus("all"); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o Simulado" />
                   </SelectTrigger>
@@ -682,13 +695,29 @@ const BoletimAcafe = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-medium">Sede</label>
+                <Select value={selectedCampus} onValueChange={(val) => { setSelectedCampus(val); setSelectedCorrection(""); }} disabled={!selectedTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Todas as sedes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as sedes</SelectItem>
+                    {availableCampuses.map((campus) => (
+                      <SelectItem key={campus} value={campus}>
+                        {campus}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium">Aluno</label>
                 <Select value={selectedCorrection} onValueChange={setSelectedCorrection} disabled={!selectedTemplate}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o aluno" />
                   </SelectTrigger>
                   <SelectContent>
-                    {corrections.map((c) => (
+                    {filteredCorrections.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.student_name} - {c.percentage?.toFixed(1)}%
                       </SelectItem>

@@ -81,6 +81,7 @@ const BoletimAcafe = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [corrections, setCorrections] = useState<Correction[]>([]);
   const [selectedCorrection, setSelectedCorrection] = useState<string>("");
+  const [selectedCampus, setSelectedCampus] = useState<string>("all");
   const [studentAnswers, setStudentAnswers] = useState<StudentAnswer[]>([]);
   const [templateQuestions, setTemplateQuestions] = useState<TemplateQuestion[]>([]);
   const [allCorrections, setAllCorrections] = useState<Correction[]>([]);

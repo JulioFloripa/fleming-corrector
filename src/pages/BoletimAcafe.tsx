@@ -304,7 +304,19 @@ const BoletimAcafe = () => {
     return calculateRankingFor(selectedCorrection);
   };
 
-  const selectedStudent = corrections.find((c) => c.id === selectedCorrection);
+  // Filter corrections by campus
+  const filteredCorrections = selectedCampus === "all"
+    ? corrections
+    : corrections.filter((c) => studentsMetaMap[c.student_name]?.campus === selectedCampus);
+
+  // Get unique campuses from student meta
+  const availableCampuses = [...new Set(
+    corrections
+      .map((c) => studentsMetaMap[c.student_name]?.campus)
+      .filter(Boolean)
+  )] as string[];
+
+  const selectedStudent = filteredCorrections.find((c) => c.id === selectedCorrection);
   const subjectStats = calculateSubjectStats();
   const classComparison = calculateClassComparison();
   const wrongQuestions = getWrongQuestions();

@@ -246,25 +246,28 @@ const Correct = () => {
               if (!studentName || studentName.length > 255) return;
               if (studentId && studentId.length > 100) return;
 
-              // Registrar/atualizar aluno na tabela students
+              // Registrar/atualizar aluno na tabela students (student_id como chave global)
               if (studentId) {
                 if (studentByIdMap.has(studentId)) {
-                  await supabase.from("students").update({
-                    name: studentName, campus: studentCampus, foreign_language: studentLanguage,
-                  }).eq("id", studentByIdMap.get(studentId)!);
+                  // Atualizar dados complementares do aluno existente
+                  const updateData: any = { name: studentName };
+                  if (studentCampus) updateData.campus = studentCampus;
+                  if (studentLanguage) updateData.foreign_language = studentLanguage;
+                  await supabase.from("students").update(updateData)
+                    .eq("id", studentByIdMap.get(studentId)!);
                 } else {
-                  await supabase.from("students").insert({
+                  const { data: inserted } = await supabase.from("students").insert({
                     user_id: userId, name: studentName, student_id: studentId,
                     campus: studentCampus, foreign_language: studentLanguage,
-                  });
-                  studentByIdMap.set(studentId, "inserted");
+                  }).select("id").single();
+                  studentByIdMap.set(studentId, inserted?.id || "inserted");
                 }
               } else if (!studentByNameMap.has(studentName)) {
-                await supabase.from("students").insert({
+                const { data: inserted } = await supabase.from("students").insert({
                   user_id: userId, name: studentName,
                   campus: studentCampus, foreign_language: studentLanguage,
-                });
-                studentByNameMap.set(studentName, "inserted");
+                }).select("id").single();
+                studentByNameMap.set(studentName, inserted?.id || "inserted");
               }
 
               // Correção: verificar existente via mapa pré-carregado

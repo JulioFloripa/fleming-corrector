@@ -211,11 +211,10 @@ const Correct = () => {
         const correctionMap = new Map<string, string>();
         (allExistingCorrections || []).forEach(c => correctionMap.set(c.student_name, c.id));
 
-        // Pré-carregar alunos existentes
+        // Pré-carregar alunos existentes (agora busca todos, não apenas do user)
         const { data: allExistingStudents } = await supabase
           .from("students")
-          .select("id, student_id, name")
-          .eq("user_id", userId);
+          .select("id, student_id, name");
         
         const studentByIdMap = new Map<string, string>();
         const studentByNameMap = new Map<string, string>();

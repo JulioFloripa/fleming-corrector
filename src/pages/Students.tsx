@@ -68,6 +68,7 @@ const Students = () => {
 
   const fetchStudents = async () => {
     setLoading(true);
+    // Agora busca todos os alunos (RLS permite leitura compartilhada)
     const { data, error } = await supabase
       .from("students")
       .select("id, name, student_id, campus, foreign_language, email")

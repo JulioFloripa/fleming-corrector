@@ -748,7 +748,7 @@ const Correct = () => {
       }}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <DialogTitle className="flex items-center gap-2 text-warning">
               ⚠️ Alunos com nomes diferentes
             </DialogTitle>
             <DialogDescription>

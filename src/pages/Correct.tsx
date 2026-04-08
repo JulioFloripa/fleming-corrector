@@ -264,14 +264,79 @@ const Correct = () => {
       return;
     }
 
+    try {
+      // Detectar tipo de arquivo e parsear
+      const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+      
+      const cellToString = (val: any): string => {
+        if (val == null) return "";
+        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
+        if (typeof val === "object") {
+          if (val.richText && Array.isArray(val.richText)) return val.richText.map((rt: any) => rt.text || "").join("");
+          if (val.text != null) return String(val.text);
+          if (val.result != null) return String(val.result);
+        }
+        return String(val);
+      };
+
+      const parseFile = async (): Promise<any[]> => {
+        if (isXLSX) {
+          const buffer = await file.arrayBuffer();
+          const wb = new ExcelJS.Workbook();
+          await wb.xlsx.load(buffer);
+          const sheet = wb.worksheets[0];
+          if (!sheet || sheet.rowCount < 2) return [];
+          const headers = (sheet.getRow(1).values as any[]).slice(1).map(cellToString);
+          const rows: any[] = [];
+          sheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+            const obj: any = {};
+            (row.values as any[]).slice(1).forEach((val, i) => { obj[headers[i]] = cellToString(val); });
+            rows.push(obj);
+          });
+          return rows;
+        } else {
+          return new Promise((resolve, reject) => {
+            Papa.parse(file, {
+              header: true, skipEmptyLines: true,
+              complete: (results) => resolve(results.data as any[]),
+              error: (error) => reject(error),
+            });
+          });
+        }
+      };
+
+      const parsedData = await parseFile();
+
+      if (!Array.isArray(parsedData) || parsedData.length === 0) {
+        throw new Error("Arquivo vazio ou formato inválido");
+      }
+      if (parsedData.length > MAX_ROWS) {
+        throw new Error(`Máximo de ${MAX_ROWS} registros por arquivo. O arquivo contém ${parsedData.length} registros.`);
+      }
+
+      // Verificar conflitos de nomes antes de processar
+      const canProceed = await detectAndResolveConflicts(parsedData);
+      if (!canProceed) return; // Dialog de conflitos aberto, processamento será retomado após resolução
+
+      await startProcessing(parsedData);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao processar",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const startProcessing = async (parsedData: any[]) => {
     setProcessing(true);
     setShowProgressDialog(true);
     setIsCompleted(false);
     setProgressPercent(0);
-    cancelProcessing.current = false; // Resetar flag de cancelamento
+    cancelProcessing.current = false;
 
     try {
-      // Carregar questões do template
       const { data: questions, error: questionsError } = await supabase
         .from("template_questions")
         .select("*")
@@ -324,7 +389,7 @@ const Correct = () => {
           const batchPromises = batch.map(async (row, batchIdx) => {
             const index = batchStart + batchIdx;
             try {
-              const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
+              let studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
               const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
               const studentCampus = (row.Sede || row.sede || row.SEDE || "").toString().trim() || null;
               const studentLanguage = (row["Idioma escolhido"] || row["idioma escolhido"] || row["Lingua estrangeira"] || row["lingua estrangeira"] || "").toString().trim() || null;
@@ -332,10 +397,17 @@ const Correct = () => {
               if (!studentName || studentName.length > 255) return;
               if (studentId && studentId.length > 100) return;
 
+              // Se houve resolução de conflito, usar o nome escolhido
+              if (studentId && conflictChoices[studentId]) {
+                const conflict = nameConflicts.find(c => c.studentId === studentId);
+                if (conflict) {
+                  studentName = conflictChoices[studentId] === "new" ? conflict.newName : conflict.existingName;
+                }
+              }
+
               // Registrar/atualizar aluno na tabela students (student_id como chave global)
               if (studentId) {
                 if (studentByIdMap.has(studentId)) {
-                  // Atualizar dados complementares do aluno existente
                   const updateData: any = { name: studentName };
                   if (studentCampus) updateData.campus = studentCampus;
                   if (studentLanguage) updateData.foreign_language = studentLanguage;
@@ -362,7 +434,6 @@ const Correct = () => {
 
               if (existingCorrectionId) {
                 correctionId = existingCorrectionId;
-                // Atualizar e deletar respostas antigas em paralelo
                 await Promise.all([
                   supabase.from("corrections")
                     .update({ status: "processing", student_id: studentId?.toString() })
@@ -394,12 +465,11 @@ const Correct = () => {
               let maxScore = 0;
               const answersToInsert: any[] = [];
 
-              // Filter questions by student's language for foreign language variant questions
-              const studentLang = studentLanguage || "Inglês"; // default to Inglês
+              const studentLang = studentLanguage || "Inglês";
               const filteredQuestions = (questions || []).filter(q => {
                 const variant = (q as any).language_variant;
-                if (!variant) return true; // normal question
-                return variant === studentLang; // only matching language variant
+                if (!variant) return true;
+                return variant === studentLang;
               });
 
               for (const question of filteredQuestions) {
@@ -428,13 +498,11 @@ const Correct = () => {
                   isCorrect = result.isCorrect;
                   maxScore += result.maxScore;
                 } else if (questionType === "discursive") {
-                  // Discursive: read manual score from spreadsheet
                   const discScore = studentAnswer != null ? parseFloat(studentAnswer.replace(",", ".")) : 0;
                   pointsEarned = isNaN(discScore) ? 0 : Math.min(5, Math.max(0, discScore));
                   isCorrect = pointsEarned > 0;
                   maxScore += question.points ?? 5;
                 } else {
-                  // Objective
                   isCorrect = studentAnswer?.toUpperCase() === question.correct_answer.toUpperCase();
                   pointsEarned = isCorrect ? Number(question.points) : 0;
                   maxScore += Number(question.points);
@@ -452,15 +520,12 @@ const Correct = () => {
                 });
               }
 
-              // Inserir todas as respostas de uma vez
               const { error: answerError } = await supabase.from("student_answers").insert(answersToInsert);
               if (answerError) throw answerError;
 
-              // Ler nota da redação (0 a 10)
               const rawEssay = row["Redação"] || row["Redacao"] || row["redação"] || row["redacao"] || row["REDAÇÃO"] || row["REDACAO"];
               const essayScore = rawEssay != null && rawEssay !== "" ? Math.min(10, Math.max(0, parseFloat(String(rawEssay).replace(",", ".")))) : null;
 
-              // Atualizar correção com pontuação
               const { error: finalError } = await supabase
                 .from("corrections")
                 .update({
@@ -482,7 +547,6 @@ const Correct = () => {
 
           await Promise.all(batchPromises);
           
-          // Atualizar progresso após cada lote
           const processed = Math.min(batchStart + BATCH_SIZE, data.length);
           setCurrentStudent(processed);
           setProgressPercent(Math.round((processed / data.length) * 100));
@@ -491,62 +555,6 @@ const Correct = () => {
         console.log(`🎉 Processamento concluído! ${processedCount} alunos processados, ${errorCount} erros`);
         setIsCompleted(true);
       };
-
-      // Detectar tipo de arquivo e processar
-      const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-      
-      // Helper para converter valores ExcelJS (rich text, hyperlinks, etc.) em string
-      const cellToString = (val: any): string => {
-        if (val == null) return "";
-        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
-        if (typeof val === "object") {
-          if (val.richText && Array.isArray(val.richText)) {
-            return val.richText.map((rt: any) => rt.text || "").join("");
-          }
-          if (val.text != null) return String(val.text);
-          if (val.result != null) return String(val.result);
-        }
-        return String(val);
-      };
-
-      const parseFile = async (): Promise<any[]> => {
-        if (isXLSX) {
-          const buffer = await file.arrayBuffer();
-          const wb = new ExcelJS.Workbook();
-          await wb.xlsx.load(buffer);
-          const sheet = wb.worksheets[0];
-          if (!sheet || sheet.rowCount < 2) return [];
-          const headers = (sheet.getRow(1).values as any[]).slice(1).map(cellToString);
-          const rows: any[] = [];
-          sheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) return;
-            const obj: any = {};
-            (row.values as any[]).slice(1).forEach((val, i) => {
-              obj[headers[i]] = cellToString(val);
-            });
-            rows.push(obj);
-          });
-          return rows;
-        } else {
-          return new Promise((resolve, reject) => {
-            Papa.parse(file, {
-              header: true,
-              skipEmptyLines: true,
-              complete: (results) => resolve(results.data as any[]),
-              error: (error) => reject(error),
-            });
-          });
-        }
-      };
-
-      const parsedData = await parseFile();
-
-      if (!Array.isArray(parsedData) || parsedData.length === 0) {
-        throw new Error("Arquivo vazio ou formato inválido");
-      }
-      if (parsedData.length > MAX_ROWS) {
-        throw new Error(`Máximo de ${MAX_ROWS} registros por arquivo. O arquivo contém ${parsedData.length} registros.`);
-      }
 
       await processData(parsedData);
     } catch (error: any) {
@@ -558,6 +566,7 @@ const Correct = () => {
       });
     } finally {
       setProcessing(false);
+    }
     }
   };
 

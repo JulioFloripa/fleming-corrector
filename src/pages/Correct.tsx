@@ -181,6 +181,79 @@ const Correct = () => {
     });
   };
 
+  // Detectar conflitos de nomes e resolver antes de processar
+  const detectAndResolveConflicts = async (parsedData: any[]): Promise<boolean> => {
+    const { data: allStudents } = await supabase
+      .from("students")
+      .select("id, student_id, name");
+
+    const studentByIdMap = new Map<string, { id: string; name: string }>();
+    (allStudents || []).forEach(s => {
+      if (s.student_id) studentByIdMap.set(s.student_id, { id: s.id, name: s.name });
+    });
+
+    const conflicts: NameConflict[] = [];
+    const seen = new Set<string>();
+
+    for (const row of parsedData) {
+      const studentName = (row.Nome || row.nome || row.NOME || "").toString().trim();
+      const studentId = (row.ID || row.id || row.matricula || row.Matricula || row.MATRICULA || "").toString().trim();
+      
+      if (!studentId || !studentName || seen.has(studentId)) continue;
+      seen.add(studentId);
+
+      const existing = studentByIdMap.get(studentId);
+      if (existing && existing.name.toLowerCase() !== studentName.toLowerCase()) {
+        conflicts.push({
+          studentId,
+          existingName: existing.name,
+          newName: studentName,
+          existingStudentDbId: existing.id,
+        });
+      }
+    }
+
+    if (conflicts.length > 0) {
+      setNameConflicts(conflicts);
+      // Default: usar o nome novo da planilha
+      const defaultChoices: Record<string, "existing" | "new"> = {};
+      conflicts.forEach(c => { defaultChoices[c.studentId] = "new"; });
+      setConflictChoices(defaultChoices);
+      setShowConflictDialog(true);
+      setPendingParsedData(parsedData);
+      return false; // não continuar processamento ainda
+    }
+
+    return true; // sem conflitos, pode continuar
+  };
+
+  const applyConflictResolutions = async () => {
+    // Aplicar as escolhas do usuário: atualizar nome do aluno e das correções
+    for (const conflict of nameConflicts) {
+      const chosenName = conflictChoices[conflict.studentId] === "new" 
+        ? conflict.newName 
+        : conflict.existingName;
+
+      // Atualizar nome na tabela students
+      await supabase.from("students")
+        .update({ name: chosenName })
+        .eq("id", conflict.existingStudentDbId);
+
+      // Atualizar nome em todas as correções com essa matrícula
+      await supabase.from("corrections")
+        .update({ student_name: chosenName })
+        .eq("student_id", conflict.studentId);
+    }
+
+    setShowConflictDialog(false);
+    
+    // Continuar com o processamento
+    if (pendingParsedData) {
+      await startProcessing(pendingParsedData);
+      setPendingParsedData(null);
+    }
+  };
+
   const processCorrection = async () => {
     if (!selectedTemplate || !file) {
       toast({

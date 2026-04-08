@@ -567,7 +567,6 @@ const Correct = () => {
     } finally {
       setProcessing(false);
     }
-    }
   };
 
   return (

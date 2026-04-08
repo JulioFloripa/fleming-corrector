@@ -31,6 +31,13 @@ import Papa from "papaparse";
 import ExcelJS from "exceljs";
 import { calculateSummationScore, calculateOpenNumericScore } from "@/lib/ufsc-scoring";
 
+interface NameConflict {
+  studentId: string;
+  existingName: string;
+  newName: string;
+  existingStudentDbId: string;
+}
+
 const Correct = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -46,6 +53,12 @@ const Correct = () => {
   const [totalStudents, setTotalStudents] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  
+  // Estados para detecção de duplicatas
+  const [nameConflicts, setNameConflicts] = useState<NameConflict[]>([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [pendingParsedData, setPendingParsedData] = useState<any[] | null>(null);
+  const [conflictChoices, setConflictChoices] = useState<Record<string, "existing" | "new">>({});
   
   // Ref para controlar cancelamento
   const cancelProcessing = useRef(false);

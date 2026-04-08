@@ -738,6 +738,71 @@ const Correct = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Dialog de Conflitos de Nomes */}
+      <Dialog open={showConflictDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowConflictDialog(false);
+          setPendingParsedData(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              ⚠️ Alunos com nomes diferentes
+            </DialogTitle>
+            <DialogDescription>
+              Foram encontrados alunos com a mesma matrícula mas nomes diferentes. 
+              Escolha qual nome manter para cada caso:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {nameConflicts.map((conflict) => (
+              <div key={conflict.studentId} className="border rounded-lg p-4 space-y-3">
+                <p className="text-sm font-medium">
+                  Matrícula: <span className="font-mono text-primary">{conflict.studentId}</span>
+                </p>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-2 rounded-md border cursor-pointer hover:bg-accent/50 transition-colors">
+                    <input
+                      type="radio"
+                      name={`conflict-${conflict.studentId}`}
+                      checked={conflictChoices[conflict.studentId] === "existing"}
+                      onChange={() => setConflictChoices(prev => ({ ...prev, [conflict.studentId]: "existing" }))}
+                      className="accent-primary"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Manter nome atual</p>
+                      <p className="text-sm text-muted-foreground">{conflict.existingName}</p>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-2 rounded-md border cursor-pointer hover:bg-accent/50 transition-colors">
+                    <input
+                      type="radio"
+                      name={`conflict-${conflict.studentId}`}
+                      checked={conflictChoices[conflict.studentId] === "new"}
+                      onChange={() => setConflictChoices(prev => ({ ...prev, [conflict.studentId]: "new" }))}
+                      className="accent-primary"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">Usar nome da planilha</p>
+                      <p className="text-sm text-muted-foreground">{conflict.newName}</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setShowConflictDialog(false); setPendingParsedData(null); }}>
+              Cancelar
+            </Button>
+            <Button onClick={applyConflictResolutions}>
+              Confirmar e Processar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

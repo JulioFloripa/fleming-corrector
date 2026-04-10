@@ -224,41 +224,39 @@ const Students = () => {
                 {search ? "Nenhum aluno encontrado." : "Nenhum aluno cadastrado. Clique em 'Novo Aluno' para começar."}
               </p>
             ) : (
-              <div className="overflow-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>Matrícula</TableHead>
-                      <TableHead>Sede</TableHead>
-                      <TableHead>Língua Estrangeira</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead className="w-24">Ações</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[25%]">Nome</TableHead>
+                    <TableHead className="w-[12%]">Matrícula</TableHead>
+                    <TableHead className="w-[14%]">Sede</TableHead>
+                    <TableHead className="w-[14%]">Língua Estrangeira</TableHead>
+                    <TableHead className="w-[20%]">E-mail</TableHead>
+                    <TableHead className="w-[15%] text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((student) => (
+                    <TableRow key={student.id}>
+                      <TableCell className="font-medium">{student.name}</TableCell>
+                      <TableCell>{student.student_id || "—"}</TableCell>
+                      <TableCell>{student.campus || "—"}</TableCell>
+                      <TableCell>{student.foreign_language || "—"}</TableCell>
+                      <TableCell className="truncate max-w-[150px]">{student.email || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(student)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteId(student.id)}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((student) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">{student.name}</TableCell>
-                        <TableCell>{student.student_id || "—"}</TableCell>
-                        <TableCell>{student.campus || "—"}</TableCell>
-                        <TableCell>{student.foreign_language || "—"}</TableCell>
-                        <TableCell>{student.email || "—"}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(student)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setDeleteId(student.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

@@ -224,7 +224,7 @@ const Students = () => {
                 {search ? "Nenhum aluno encontrado." : "Nenhum aluno cadastrado. Clique em 'Novo Aluno' para começar."}
               </p>
             ) : (
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[25%]">Nome</TableHead>

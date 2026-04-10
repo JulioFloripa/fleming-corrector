@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Search, Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 
 interface Student {
@@ -40,6 +40,8 @@ const Students = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState<keyof Student | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
@@ -163,14 +165,41 @@ const Students = () => {
     setDeleteId(null);
   };
 
-  const filtered = students.filter((s) => {
-    const q = search.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.student_id && s.student_id.toLowerCase().includes(q)) ||
-      (s.campus && s.campus.toLowerCase().includes(q))
+  const handleSort = (field: keyof Student) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: keyof Student }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
     );
-  });
+  };
+
+  const filtered = students
+    .filter((s) => {
+      const q = search.toLowerCase();
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.student_id && s.student_id.toLowerCase().includes(q)) ||
+        (s.campus && s.campus.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      const valA = (a[sortField] || "").toString().toLowerCase();
+      const valB = (b[sortField] || "").toString().toLowerCase();
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -227,11 +256,21 @@ const Students = () => {
               <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[25%]">Nome</TableHead>
-                    <TableHead className="w-[12%]">Matrícula</TableHead>
-                    <TableHead className="w-[14%]">Sede</TableHead>
-                    <TableHead className="w-[14%]">Língua Estrangeira</TableHead>
-                    <TableHead className="w-[20%]">E-mail</TableHead>
+                    <TableHead className="w-[25%] cursor-pointer select-none" onClick={() => handleSort("name")}>
+                      <span className="flex items-center">Nome <SortIcon field="name" /></span>
+                    </TableHead>
+                    <TableHead className="w-[12%] cursor-pointer select-none" onClick={() => handleSort("student_id")}>
+                      <span className="flex items-center">Matrícula <SortIcon field="student_id" /></span>
+                    </TableHead>
+                    <TableHead className="w-[14%] cursor-pointer select-none" onClick={() => handleSort("campus")}>
+                      <span className="flex items-center">Sede <SortIcon field="campus" /></span>
+                    </TableHead>
+                    <TableHead className="w-[14%] cursor-pointer select-none" onClick={() => handleSort("foreign_language")}>
+                      <span className="flex items-center">Língua <SortIcon field="foreign_language" /></span>
+                    </TableHead>
+                    <TableHead className="w-[20%] cursor-pointer select-none" onClick={() => handleSort("email")}>
+                      <span className="flex items-center">E-mail <SortIcon field="email" /></span>
+                    </TableHead>
                     <TableHead className="w-[15%] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>

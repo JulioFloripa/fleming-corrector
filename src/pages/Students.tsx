@@ -165,14 +165,41 @@ const Students = () => {
     setDeleteId(null);
   };
 
-  const filtered = students.filter((s) => {
-    const q = search.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      (s.student_id && s.student_id.toLowerCase().includes(q)) ||
-      (s.campus && s.campus.toLowerCase().includes(q))
+  const handleSort = (field: keyof Student) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: keyof Student }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
     );
-  });
+  };
+
+  const filtered = students
+    .filter((s) => {
+      const q = search.toLowerCase();
+      return (
+        s.name.toLowerCase().includes(q) ||
+        (s.student_id && s.student_id.toLowerCase().includes(q)) ||
+        (s.campus && s.campus.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => {
+      if (!sortField) return 0;
+      const valA = (a[sortField] || "").toString().toLowerCase();
+      const valB = (b[sortField] || "").toString().toLowerCase();
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">

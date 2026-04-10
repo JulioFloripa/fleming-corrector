@@ -256,11 +256,21 @@ const Students = () => {
               <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[25%]">Nome</TableHead>
-                    <TableHead className="w-[12%]">Matrícula</TableHead>
-                    <TableHead className="w-[14%]">Sede</TableHead>
-                    <TableHead className="w-[14%]">Língua Estrangeira</TableHead>
-                    <TableHead className="w-[20%]">E-mail</TableHead>
+                    <TableHead className="w-[25%] cursor-pointer select-none" onClick={() => handleSort("name")}>
+                      <span className="flex items-center">Nome <SortIcon field="name" /></span>
+                    </TableHead>
+                    <TableHead className="w-[12%] cursor-pointer select-none" onClick={() => handleSort("student_id")}>
+                      <span className="flex items-center">Matrícula <SortIcon field="student_id" /></span>
+                    </TableHead>
+                    <TableHead className="w-[14%] cursor-pointer select-none" onClick={() => handleSort("campus")}>
+                      <span className="flex items-center">Sede <SortIcon field="campus" /></span>
+                    </TableHead>
+                    <TableHead className="w-[14%] cursor-pointer select-none" onClick={() => handleSort("foreign_language")}>
+                      <span className="flex items-center">Língua <SortIcon field="foreign_language" /></span>
+                    </TableHead>
+                    <TableHead className="w-[20%] cursor-pointer select-none" onClick={() => handleSort("email")}>
+                      <span className="flex items-center">E-mail <SortIcon field="email" /></span>
+                    </TableHead>
                     <TableHead className="w-[15%] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>

@@ -32,7 +32,7 @@ interface Student {
 }
 
 const FOREIGN_LANGUAGES = ["Inglês", "Espanhol"];
-const CAMPUSES = ["Criciúma", "Chapecó", "Florianópolis"];
+const CAMPUSES = ["CHAPECÓ", "CRICIÚMA", "FLORIANÓPOLIS", "ON-LINE", "PORTO ALEGRE"];
 
 const Students = () => {
   const navigate = useNavigate();

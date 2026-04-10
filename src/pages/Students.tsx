@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Trash2, Search, Users, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import FlemingLogo from "@/components/FlemingLogo";
 
 interface Student {

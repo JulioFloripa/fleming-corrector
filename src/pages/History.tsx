@@ -146,6 +146,10 @@ const History = () => {
     return acc;
   }, [] as { id: string; name: string }[]);
 
+  const displayed = selectedRecalcTemplate && selectedRecalcTemplate !== "__all__"
+    ? corrections.filter(c => c.template_id === selectedRecalcTemplate)
+    : corrections;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">

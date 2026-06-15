@@ -4,12 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Clock, Trash2, RefreshCw, UserPlus, ChevronDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import FlemingLogo from "@/components/FlemingLogo";
 import { recalculateByTemplate } from "@/lib/recalculate";
 import AddStudentToExamDialog from "@/components/student/AddStudentToExamDialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface CorrectionWithTemplate {
   id: string;
@@ -37,6 +42,41 @@ const History = () => {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [selectedRecalcTemplate, setSelectedRecalcTemplate] = useState<string>("");
   const [allTemplates, setAllTemplates] = useState<{ id: string; name: string; exam_type: string; total_questions: number }[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (ids: string[], checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) ids.forEach(i => next.add(i));
+      else ids.forEach(i => next.delete(i));
+      return next;
+    });
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    await supabase.from("student_answers").delete().in("correction_id", ids);
+    const { error } = await supabase.from("corrections").delete().in("id", ids);
+    setBulkDeleting(false);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${ids.length} correção(ões) excluída(s)!` });
+    setCorrections(prev => prev.filter(c => !selectedIds.has(c.id)));
+    setSelectedIds(new Set());
+  };
 
   useEffect(() => {
     checkAuthAndLoad();
@@ -154,38 +194,69 @@ const History = () => {
                     <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
-                  {uniqueTemplates.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
-                        <SelectTrigger className="w-[280px]">
-                          <SelectValue placeholder="Selecione um gabarito..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueTemplates.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
-                        onClick={() => {
-                          const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
-                          if (t) handleRecalculate(t.id, t.name);
-                        }}
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
-                        Recalcular
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedIds.size > 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" disabled={bulkDeleting}>
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Excluir selecionados ({selectedIds.size})
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir {selectedIds.size} correção(ões)?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação também removerá as respostas dos alunos associadas e não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={bulkDelete}>Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {uniqueTemplates.length > 0 && (
+                      <>
+                        <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                          <SelectTrigger className="w-[280px]">
+                            <SelectValue placeholder="Selecione um gabarito..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {uniqueTemplates.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                          onClick={() => {
+                            const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
+                            if (t) handleRecalculate(t.id, t.name);
+                          }}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
+                          Recalcular
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={corrections.length > 0 && corrections.every(c => selectedIds.has(c.id))}
+                          onCheckedChange={(v) => toggleAll(corrections.map(c => c.id), !!v)}
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
                       <TableHead>Aluno</TableHead>
                       <TableHead>Matrícula</TableHead>
                       <TableHead>Template</TableHead>
@@ -198,7 +269,14 @@ const History = () => {
                   </TableHeader>
                   <TableBody>
                     {corrections.map((c) => (
-                      <TableRow key={c.id}>
+                      <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(c.id)}
+                            onCheckedChange={() => toggleOne(c.id)}
+                            aria-label={`Selecionar ${c.student_name}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{c.student_name}</TableCell>
                         <TableCell>{c.student_id || "-"}</TableCell>
                         <TableCell>{c.templates?.name || "-"}</TableCell>

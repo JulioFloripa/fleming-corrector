@@ -223,11 +223,12 @@ const History = () => {
                     )}
                     {uniqueTemplates.length > 0 && (
                       <>
-                        <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                        <Select value={selectedRecalcTemplate || "__all__"} onValueChange={setSelectedRecalcTemplate}>
                           <SelectTrigger className="w-[280px]">
-                            <SelectValue placeholder="Selecione um gabarito..." />
+                            <SelectValue placeholder="Filtrar por gabarito..." />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="__all__">Todos os gabaritos</SelectItem>
                             {uniqueTemplates.map(t => (
                               <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
@@ -236,7 +237,7 @@ const History = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                          disabled={!selectedRecalcTemplate || selectedRecalcTemplate === "__all__" || recalculating === selectedRecalcTemplate}
                           onClick={() => {
                             const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
                             if (t) handleRecalculate(t.id, t.name);

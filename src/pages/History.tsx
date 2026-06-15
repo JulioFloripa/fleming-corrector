@@ -257,8 +257,8 @@ const History = () => {
                     <TableRow>
                       <TableHead className="w-10">
                         <Checkbox
-                          checked={corrections.length > 0 && corrections.every(c => selectedIds.has(c.id))}
-                          onCheckedChange={(v) => toggleAll(corrections.map(c => c.id), !!v)}
+                          checked={displayed.length > 0 && displayed.every(c => selectedIds.has(c.id))}
+                          onCheckedChange={(v) => toggleAll(displayed.map(c => c.id), !!v)}
                           aria-label="Selecionar todos"
                         />
                       </TableHead>
@@ -273,7 +273,7 @@ const History = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {corrections.map((c) => (
+                    {displayed.map((c) => (
                       <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                         <TableCell>
                           <Checkbox

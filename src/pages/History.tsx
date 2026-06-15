@@ -195,7 +195,7 @@ const History = () => {
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
+                    <CardTitle>Correções Realizadas ({displayed.length}{displayed.length !== corrections.length ? ` de ${corrections.length}` : ""})</CardTitle>
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">

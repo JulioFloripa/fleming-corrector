@@ -250,6 +250,13 @@ const History = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={corrections.length > 0 && corrections.every(c => selectedIds.has(c.id))}
+                          onCheckedChange={(v) => toggleAll(corrections.map(c => c.id), !!v)}
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
                       <TableHead>Aluno</TableHead>
                       <TableHead>Matrícula</TableHead>
                       <TableHead>Template</TableHead>
@@ -262,7 +269,14 @@ const History = () => {
                   </TableHeader>
                   <TableBody>
                     {corrections.map((c) => (
-                      <TableRow key={c.id}>
+                      <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(c.id)}
+                            onCheckedChange={() => toggleOne(c.id)}
+                            aria-label={`Selecionar ${c.student_name}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{c.student_name}</TableCell>
                         <TableCell>{c.student_id || "-"}</TableCell>
                         <TableCell>{c.templates?.name || "-"}</TableCell>

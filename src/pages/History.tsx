@@ -194,32 +194,56 @@ const History = () => {
                     <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
-                  {uniqueTemplates.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
-                        <SelectTrigger className="w-[280px]">
-                          <SelectValue placeholder="Selecione um gabarito..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {uniqueTemplates.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
-                        onClick={() => {
-                          const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
-                          if (t) handleRecalculate(t.id, t.name);
-                        }}
-                      >
-                        <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
-                        Recalcular
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {selectedIds.size > 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" disabled={bulkDeleting}>
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Excluir selecionados ({selectedIds.size})
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir {selectedIds.size} correção(ões)?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação também removerá as respostas dos alunos associadas e não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={bulkDelete}>Excluir</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    {uniqueTemplates.length > 0 && (
+                      <>
+                        <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                          <SelectTrigger className="w-[280px]">
+                            <SelectValue placeholder="Selecione um gabarito..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {uniqueTemplates.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                          onClick={() => {
+                            const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
+                            if (t) handleRecalculate(t.id, t.name);
+                          }}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-1 ${recalculating === selectedRecalcTemplate ? "animate-spin" : ""}`} />
+                          Recalcular
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

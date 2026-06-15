@@ -42,6 +42,41 @@ const History = () => {
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [selectedRecalcTemplate, setSelectedRecalcTemplate] = useState<string>("");
   const [allTemplates, setAllTemplates] = useState<{ id: string; name: string; exam_type: string; total_questions: number }[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (ids: string[], checked: boolean) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) ids.forEach(i => next.add(i));
+      else ids.forEach(i => next.delete(i));
+      return next;
+    });
+  };
+
+  const bulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    await supabase.from("student_answers").delete().in("correction_id", ids);
+    const { error } = await supabase.from("corrections").delete().in("id", ids);
+    setBulkDeleting(false);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${ids.length} correção(ões) excluída(s)!` });
+    setCorrections(prev => prev.filter(c => !selectedIds.has(c.id)));
+    setSelectedIds(new Set());
+  };
 
   useEffect(() => {
     checkAuthAndLoad();

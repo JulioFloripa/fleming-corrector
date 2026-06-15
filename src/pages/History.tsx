@@ -146,6 +146,10 @@ const History = () => {
     return acc;
   }, [] as { id: string; name: string }[]);
 
+  const displayed = selectedRecalcTemplate && selectedRecalcTemplate !== "__all__"
+    ? corrections.filter(c => c.template_id === selectedRecalcTemplate)
+    : corrections;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
@@ -191,7 +195,7 @@ const History = () => {
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div>
-                    <CardTitle>Correções Realizadas ({corrections.length})</CardTitle>
+                    <CardTitle>Correções Realizadas ({displayed.length}{displayed.length !== corrections.length ? ` de ${corrections.length}` : ""})</CardTitle>
                     <CardDescription>Histórico de todas as correções do sistema</CardDescription>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -219,11 +223,12 @@ const History = () => {
                     )}
                     {uniqueTemplates.length > 0 && (
                       <>
-                        <Select value={selectedRecalcTemplate} onValueChange={setSelectedRecalcTemplate}>
+                        <Select value={selectedRecalcTemplate || "__all__"} onValueChange={setSelectedRecalcTemplate}>
                           <SelectTrigger className="w-[280px]">
-                            <SelectValue placeholder="Selecione um gabarito..." />
+                            <SelectValue placeholder="Filtrar por gabarito..." />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="__all__">Todos os gabaritos</SelectItem>
                             {uniqueTemplates.map(t => (
                               <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                             ))}
@@ -232,7 +237,7 @@ const History = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={!selectedRecalcTemplate || recalculating === selectedRecalcTemplate}
+                          disabled={!selectedRecalcTemplate || selectedRecalcTemplate === "__all__" || recalculating === selectedRecalcTemplate}
                           onClick={() => {
                             const t = uniqueTemplates.find(x => x.id === selectedRecalcTemplate);
                             if (t) handleRecalculate(t.id, t.name);
@@ -252,8 +257,8 @@ const History = () => {
                     <TableRow>
                       <TableHead className="w-10">
                         <Checkbox
-                          checked={corrections.length > 0 && corrections.every(c => selectedIds.has(c.id))}
-                          onCheckedChange={(v) => toggleAll(corrections.map(c => c.id), !!v)}
+                          checked={displayed.length > 0 && displayed.every(c => selectedIds.has(c.id))}
+                          onCheckedChange={(v) => toggleAll(displayed.map(c => c.id), !!v)}
                           aria-label="Selecionar todos"
                         />
                       </TableHead>
@@ -268,7 +273,7 @@ const History = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {corrections.map((c) => (
+                    {displayed.map((c) => (
                       <TableRow key={c.id} data-state={selectedIds.has(c.id) ? "selected" : undefined}>
                         <TableCell>
                           <Checkbox

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Subscribe from "./pages/Subscribe";
 import Dashboard from "./pages/Dashboard";
 import Templates from "./pages/Templates";
 import TemplateEdit from "./pages/TemplateEdit";
@@ -18,8 +19,11 @@ import StudentEdit from "./pages/StudentEdit";
 import StudentPerformance from "./pages/StudentPerformance";
 import Students from "./pages/Students";
 import NotFound from "./pages/NotFound";
+import RequireAccess from "./components/RequireAccess";
 
 const queryClient = new QueryClient();
+
+const gated = (el: JSX.Element) => <RequireAccess>{el}</RequireAccess>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -30,18 +34,19 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/templates/:id" element={<TemplateEdit />} />
-          <Route path="/correct" element={<Correct />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/boletins" element={<Boletins />} />
-          <Route path="/boletins/acafe" element={<BoletimAcafe />} />
-          <Route path="/disciplines" element={<Disciplines />} />
-          <Route path="/students/edit" element={<StudentEdit />} />
-          <Route path="/students/performance" element={<StudentPerformance />} />
-          <Route path="/students" element={<Students />} />
+          <Route path="/subscribe" element={<Subscribe />} />
+          <Route path="/dashboard" element={gated(<Dashboard />)} />
+          <Route path="/templates" element={gated(<Templates />)} />
+          <Route path="/templates/:id" element={gated(<TemplateEdit />)} />
+          <Route path="/correct" element={gated(<Correct />)} />
+          <Route path="/history" element={gated(<History />)} />
+          <Route path="/reports" element={gated(<Reports />)} />
+          <Route path="/boletins" element={gated(<Boletins />)} />
+          <Route path="/boletins/acafe" element={gated(<BoletimAcafe />)} />
+          <Route path="/disciplines" element={gated(<Disciplines />)} />
+          <Route path="/students/edit" element={gated(<StudentEdit />)} />
+          <Route path="/students/performance" element={gated(<StudentPerformance />)} />
+          <Route path="/students" element={gated(<Students />)} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

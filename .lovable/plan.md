@@ -1,51 +1,61 @@
+## Objetivo
 
-# Recalcular Correções ao Alterar Gabarito
+Adicionar o tipo de prova **UFPR – Universidade Federal do Paraná** (80 questões objetivas A–D, peso 1) no seletor de "Tipo de Prova", e garantir que o **modelo Excel de importação para correção** seja gerado corretamente para esse novo preset.
 
-## O que muda para o usuario
+Os pesos por campus (Curitiba: Biologia e Português peso 2; Toledo: Biologia e Química peso 2) serão tratados depois, na camada de boletins de desempenho — fora deste passo.
 
-Ao editar um gabarito e salvar, ou na tela de historico, havera um botao "Recalcular" que reprocessa todas as correcoes vinculadas aquele gabarito usando as respostas brutas ja armazenadas (tabela `student_answers`), sem precisar reenviar o arquivo.
+## Sem alterações no banco
 
-## Como funciona
+Nenhuma migração. O preset usa apenas tabelas/colunas existentes (`templates`, `template_questions`, `question_type = 'objective'`, `language_variant` para Inglês/Espanhol). **Nenhum dado existente é perdido ou alterado.**
 
-A tabela `student_answers` ja armazena a `student_answer` (resposta do aluno) para cada questao. O recalculo:
+## Mudanças de código
 
-1. Busca as questoes atualizadas do gabarito (`template_questions`)
-2. Para cada correcao vinculada ao template, percorre as `student_answers`
-3. Recalcula `is_correct`, `correct_answer` e `points_earned` com base no gabarito atualizado
-4. Atualiza `total_score`, `max_score` e `percentage` na correcao
+### 1. `src/lib/exam-presets.ts` — novo preset `ufpr`
 
-## Onde o botao aparece
+Adicionar ao objeto `EXAM_PRESETS`:
 
-1. **Tela de Gabarito (`TemplateEdit.tsx`)**: Ao salvar o gabarito, se ja existirem correcoes vinculadas, exibe um dialogo perguntando se deseja recalcular automaticamente.
-2. **Tela de Historico (`History.tsx`)**: Botao "Recalcular" por template (agrupado) para disparar manualmente.
+- `totalQuestions: 80`
+- `alternatives: ["A", "B", "C", "D"]`
+- `subjects` na ordem do edital:
+  - Português 10
+  - Biologia 8
+  - Física 8
+  - Geografia 8
+  - História 8
+  - Matemática 8
+  - Química 8
+  - Língua Estrangeira 7 *(gera duas linhas por questão: Inglês e Espanhol, padrão já usado no ACAFE)*
+  - Literatura Brasileira 5
+  - Filosofia 5
+  - Sociologia 5
 
-## Detalhes tecnicos
+Total = 80. Todas `question_type: "objective"`, peso 1 (padrão de `generatePresetQuestions`).
 
-### Funcao de recalculo (novo arquivo `src/lib/recalculate.ts`)
+### 2. `src/pages/Templates.tsx` — opção no Select
 
-```text
-recalculateByTemplate(templateId)
-  |
-  +-- Buscar template_questions WHERE template_id
-  +-- Buscar corrections WHERE template_id
-  +-- Para cada correction:
-       +-- Buscar student_answers WHERE correction_id
-       +-- Para cada answer:
-       |    +-- Encontrar question correspondente (por question_number)
-       |    +-- Recalcular is_correct, correct_answer, points_earned
-       |    +-- UPDATE student_answers
-       +-- Somar total_score, max_score
-       +-- UPDATE corrections (total_score, max_score, percentage)
-```
+Acrescentar `<SelectItem value="ufpr">UFPR</SelectItem>` no select de "Tipo de Prova". A lógica existente já preenche o total de questões e cria automaticamente as `template_questions` via `generatePresetQuestions`.
 
-### Alteracoes em arquivos
+### 3. Modelo Excel para importação
 
-1. **Novo: `src/lib/recalculate.ts`** - Funcao reutilizavel `recalculateByTemplate(templateId)` que faz todo o processamento.
+O fluxo de correção em `src/pages/Correct.tsx` **já possui** o botão **"Baixar modelo"** (`downloadTemplate`), que gera uma planilha `.xlsx` com:
 
-2. **`src/pages/TemplateEdit.tsx`** - Ao salvar (`handleSaveQuestions`), verificar se existem correcoes para o template. Se sim, mostrar um `AlertDialog` perguntando se deseja recalcular. Se confirmar, chamar `recalculateByTemplate`.
+- Cabeçalhos fixos: `ID`, `E-mail`, `Nome`, `Sede`, `Idioma escolhido`
+- Uma coluna por questão: `Questão 01` … `Questão NN` (usa `template.total_questions`)
+- Coluna final `Redação`
 
-3. **`src/pages/History.tsx`** - Adicionar botao "Recalcular" no header ou por template para disparar o recalculo manual. Usar um `Select` de template + botao, ou agrupar correcoes por template com opcao de recalcular cada grupo.
+Como o preset UFPR define `total_questions = 80`, o modelo Excel passa a ser gerado automaticamente com **80 colunas de questões** (A–D) + colunas fixas + Redação, sem precisar de novo código.
 
-### Nao requer mudancas no banco de dados
+Ajustes verificados (sem mudança de código necessária):
+- Importação aceita `.xlsx`, `.xls` e `.csv` (já implementado).
+- Coluna **"Idioma escolhido"** já é usada para resolver Inglês × Espanhol nas questões de Língua Estrangeira no `recalculate.ts`.
 
-Todos os dados necessarios (respostas brutas dos alunos) ja estao armazenados na tabela `student_answers`. Nenhuma migracao e necessaria.
+## Validação manual
+
+1. Criar gabarito com tipo **UFPR** → conferir 80 questões com a distribuição correta (e duas linhas de Língua Estrangeira por número de questão: Inglês e Espanhol).
+2. Em **Correção**, selecionar o gabarito UFPR → clicar em **Baixar modelo** → abrir o `.xlsx` e conferir cabeçalhos: `ID, E-mail, Nome, Sede, Idioma escolhido, Questão 01 … Questão 80, Redação`.
+3. Importar a planilha preenchida e conferir que a correção roda normalmente.
+
+## Fora deste escopo
+
+- Pesos por campus (Curitiba/Toledo) na pontuação final → será feito depois nos boletins, sem alterar o gabarito base.
+- Layout de boletim específico UFPR.
